@@ -1,0 +1,12 @@
+influx.port=8086
+influx.db=jmeter
+lg.id=debug
+LOOP_COUNT=1
+VUSERS=1
+RAMP_UP=1
+simulation=TEST
+build.id=322
+project.id=TEST
+influx.host=epuakhaw1400.kyiv.epam.com
+test.type=TEST
+env.type=RP=TEST
