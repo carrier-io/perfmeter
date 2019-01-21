@@ -13,7 +13,7 @@ RUN apt-get clean && \
                 python             
 
 # 4 Cloning necessary files from repository
-RUN git clone https://github.com/carrier-io/perfmeter.git
+RUN git clone --single-branch --branch master https://github.com/carrier-io/perfmeter.git
 
 # 5 Install JMeter
 RUN   mkdir /jmeter \
