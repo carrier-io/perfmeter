@@ -20,12 +20,13 @@ For example:
 ``` 
 docker run --rm\
        -v <your_local_path_to_tests>:/mnt/jmeter/ \
-       -v <your_local_path_to_reports>:/tmp/reports \ 
+       -v <your_local_path_to_reports>:/tmp/reports \  - optional
        getcarrier/perfmeter:latest \
-       -n -t /mnt/jmeter/<test_name> -q /mnt/jmeter/<config_file> \
-       -j /tmp/reports/jmeter_$(date +%s).log \
-       -l /tmp/reports/jmeter_$(date +%s).jtl -e \
-       -o /tmp/reports/HtmlReport_$(date +%s)/
+       -n -t /mnt/jmeter/<test_name> 
+       -q /mnt/jmeter/<config_file> \   - optional
+       -j /tmp/reports/jmeter_$(date +%s).log \  - optional
+       -l /tmp/reports/jmeter_$(date +%s).jtl -e \  - optional
+       -o /tmp/reports/HtmlReport_$(date +%s)/   - optional
 ```
 
 ##### 3. Open test report
@@ -49,4 +50,10 @@ project.id=TEST
 influx.host=<influx_host>
 test.type=TEST
 env.type=TEST
+```
+
+
+You can also pass parameters from the command line with the -J option. For example :
+```
+... -t /mnt/jmeter/<test_name> -JVUSERS=1 -JRAMP_UP=1 ...
 ```

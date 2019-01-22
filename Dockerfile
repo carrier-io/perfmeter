@@ -2,7 +2,7 @@
 FROM openjdk:8-jre-slim
 
 # 2 JMeter version passed via command line argument (docker build --build-arg JMETER_VERSION=5.0 -t jmeter -f Dockerfile  .)
-ARG JMETER_VERSION
+ARG JMETER_VERSION=5.0
 
 # 3 Install utilities
 RUN apt-get clean && \
