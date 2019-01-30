@@ -29,7 +29,7 @@ COPY Common/launch.sh /
 COPY Common/AddRemoveListener/ /
 COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
 COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSION/lib/ext
-
+COPY Tests /mnt/jmeter
 
 # 8 Application to run on starting the container
 ENTRYPOINT ["/launch.sh"]
