@@ -1,6 +1,7 @@
 from time import time
 import datetime
 import numpy as np
+import sys
 from influxdb import InfluxDBClient
 
 COMPARISON_DATABASE = 'comparison'
@@ -15,16 +16,23 @@ class TestResultsParser(object):
         simulation = self.args['simulation']
         reqs = dict()
         test_time = time()
-        build_id = "{}_{}_{}".format(self.args['test.type'], self.args['VUSERS'],
-                                     datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
         client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
                                 database=self.args["influx.db"])
-        results = client.query("SELECT * FROM requestsRaw where time >= " + str(self.args['start_time'])
-                               + "ms and time <= " + str(self.args['end_time']) + "ms")
+        raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + str(self.args['simulation']) +
+                            "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
+                            + str(self.args['end_time']) + "ms LIMIT 1")
+        for raw in list(raws.get_points()):
+            users = raw['startedThreads']
+            test_type = raw['testType']
+        build_id = "{}_{}_{}".format(test_type, users,
+                                     datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
+        results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + str(self.args['simulation']) +
+                               "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
+                               + str(self.args['end_time']) + "ms")
         client.close()
         for entry in list(results.get_points()):
             try:
-                data = {'simulation': simulation, 'test_type': self.args['test.type'],
+                data = {'simulation': simulation, 'test_type': entry['testType'],
                         'response_time': int(entry['responseTime']), 'request_name': entry['requestName'],
                         'response_code': entry['responseCode'], 'request_url': str(entry['url']),
                         'request_method': str(entry['method']), 'status': str(entry['status'])}
@@ -60,12 +68,12 @@ class TestResultsParser(object):
                 "measurement": "api_comparison",
                 "tags": {
                     "simulation": simulation,
-                    "users": self.args['VUSERS'],
-                    "test_type": self.args["test.type"],
+                    "users": users,
+                    "test_type": test_type,
                     "build_id": build_id,
                     "request_name": reqs[req]['request_name'],
                     "method": reqs[req]['method'],
-                    "duration": self.args['DURATION']
+                    "duration": int(self.args['end_time'])/1000 - int(self.args['start_time'])/1000
                 },
                 "time": datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'),
                 "fields": {
@@ -97,26 +105,33 @@ class TestResultsParser(object):
         client.close()
 
 
-def parse_args():
+def parse_args(jmeter_execution_string):
     args = {}
-    with open("/mnt/jmeter/parameters.txt") as file:
-        for line in file:
-            split = line.split("=")
-            args[split[0]] = split[1].replace("\n", "")
-    if 'VUSERS' not in args:
-        args['VUSERS'] = 1
-    if 'test.type' not in args:
-        args['test.type'] = 'demo'
-    if 'DURATION' not in args:
-        args['DURATION'] = 10
+    params = jmeter_execution_string.split("%")
+    args['simulation'] = jmeter_execution_string.split("-t%")[1].split(".jmx")[0] + ".jmx"
+    for param in params:
+        if str(param).__contains__("-J"):
+            args[param.split("=")[0]] = param.split("=")[1]
     if 'influx.host' not in args or 'influx.port' not in args or 'influx.db' not in args:
-        print("InfluxDB config not found in parameters.txt. Exit")
+        print("parse from file")
+        try:
+            path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
+            with open(path) as file:
+                for line in file:
+                    split = line.split("=")
+                    args[split[0]] = split[1].replace("\n", "")
+        except:
+            print("InfluxDB in not configured. Exit")
+            exit(0)
+    if 'influx.host' not in args or 'influx.port' not in args or 'influx.db' not in args:
+        print("InfluxDB in not configured. Exit")
         exit(0)
     return args
 
 
 if __name__ == '__main__':
     print("Parsing simulation log")
-    args = parse_args()
+    jmeter_execution_string = sys.argv[1]
+    args = parse_args(jmeter_execution_string)
     testResultsParser = TestResultsParser(args)
     testResultsParser.parse_results()

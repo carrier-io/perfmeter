@@ -19,5 +19,5 @@ jmeter $@
 echo "end_time=$(date +%s)000" >> /mnt/jmeter/parameters.txt
 
 python ./remove_listeners.py ${args// /%}
-python ./compare_build_metrix.py
+python ./compare_build_metrix.py ${args// /%}
 echo "END Running Jmeter on `date`"
