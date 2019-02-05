@@ -13,7 +13,7 @@ class TestResultsParser(object):
         self.args = arguments
 
     def parse_results(self):
-        """Parse line with error and send to database"""
+        """Parse test results and send to comparison database"""
         simulation = self.args['simulation']
         reqs = dict()
         test_time = time()
