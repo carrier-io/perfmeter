@@ -54,9 +54,29 @@
             <stringProp name="Argument.value">${__P(DURATION, 30)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
-          <elementProp name="test_type" elementType="Argument">
-            <stringProp name="Argument.name">test_type</stringProp>
-            <stringProp name="Argument.value">${__P(TEST_TYPE, baseline)}</stringProp>
+          <elementProp name="test.type" elementType="Argument">
+            <stringProp name="Argument.name">test.type</stringProp>
+            <stringProp name="Argument.value">${__P(test.type,demo)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="simulation" elementType="Argument">
+            <stringProp name="Argument.name">simulation</stringProp>
+            <stringProp name="Argument.value">${__P(simulation,floodIO)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="env.type" elementType="Argument">
+            <stringProp name="Argument.name">env.type</stringProp>
+            <stringProp name="Argument.value">${__P(env.type,demo)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="project.id" elementType="Argument">
+            <stringProp name="Argument.name">project.id</stringProp>
+            <stringProp name="Argument.value">${__P(project.id,demo)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="lg.id" elementType="Argument">
+            <stringProp name="Argument.name">lg.id</stringProp>
+            <stringProp name="Argument.value">${__P(lg.id,debug)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>

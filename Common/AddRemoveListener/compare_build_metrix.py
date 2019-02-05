@@ -18,7 +18,7 @@ class TestResultsParser(object):
         test_time = time()
         client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
                                 database=self.args["influx.db"])
-        raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + str(self.args['simulation']) +
+        raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + simulation +
                             "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
                             + str(self.args['end_time']) + "ms LIMIT 1")
         for raw in list(raws.get_points()):
@@ -26,7 +26,7 @@ class TestResultsParser(object):
             test_type = raw['testType']
         build_id = "{}_{}_{}".format(test_type, users,
                                      datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
-        results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + str(self.args['simulation']) +
+        results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + simulation +
                                "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
                                + str(self.args['end_time']) + "ms")
         client.close()
@@ -107,25 +107,35 @@ class TestResultsParser(object):
 
 def parse_args(jmeter_execution_string):
     args = {}
+    test_name = jmeter_execution_string.split("-t%")[1].split(".jmx")[0]
+    if str(test_name).__contains__("/"):
+        args['simulation'] = test_name.split("/")[-1]
+    else:
+        args['simulation'] = test_name
+    try:
+        path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
+        with open(path) as file:
+            for line in file:
+                split = line.split("=")
+                args[split[0]] = split[1].replace("\n", "")
+    except:
+        pass
     params = jmeter_execution_string.split("%")
-    args['simulation'] = jmeter_execution_string.split("-t%")[1].split(".jmx")[0] + ".jmx"
     for param in params:
         if str(param).__contains__("-J"):
-            args[param.split("=")[0]] = param.split("=")[1]
-    if 'influx.host' not in args or 'influx.port' not in args or 'influx.db' not in args:
-        print("parse from file")
-        try:
-            path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
-            with open(path) as file:
-                for line in file:
-                    split = line.split("=")
-                    args[split[0]] = split[1].replace("\n", "")
-        except:
-            print("InfluxDB in not configured. Exit")
-            exit(0)
-    if 'influx.host' not in args or 'influx.port' not in args or 'influx.db' not in args:
+            key = param.split("=")[0]
+            args[str(key)[2:]] = param.split("=")[1]
+    if 'influx.host' not in args:
         print("InfluxDB in not configured. Exit")
         exit(0)
+    if 'influx.port' not in args:
+        args['influx.port'] = 8086
+    if 'influx.db' not in args:
+        args['influx.db'] = 'jmeter'
+    with open("/mnt/jmeter/test_info.txt") as file:
+        for line in file:
+            split = line.split("=")
+            args[split[0]] = split[1].replace("\n", "")
     return args
 
 
