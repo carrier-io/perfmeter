@@ -1,11 +1,9 @@
-import argparse
 from time import time
 import datetime
 import numpy as np
 from influxdb import InfluxDBClient
 
 COMPARISON_DATABASE = 'comparison'
-JMETER_DATABASE = 'jmeter'
 
 
 class TestResultsParser(object):
@@ -17,17 +15,16 @@ class TestResultsParser(object):
         simulation = self.args['simulation']
         reqs = dict()
         test_time = time()
-        build_id = "{}_{}_{}".format(self.args['type'], self.args['count'],
+        build_id = "{}_{}_{}".format(self.args['test.type'], self.args['VUSERS'],
                                      datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
-        client = InfluxDBClient(self.args["influx_host"], 8086, username='', password='', database=JMETER_DATABASE)
+        client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
+                                database=self.args["influx.db"])
         results = client.query("SELECT * FROM requestsRaw where time >= " + str(self.args['start_time'])
                                + "ms and time <= " + str(self.args['end_time']) + "ms")
         client.close()
-        print(results)
         for entry in list(results.get_points()):
             try:
-                data = {'environment': self.args['environment'], 'simulation': simulation,
-                        'test_type': self.args['type'], 'user_count': self.args['count'],
+                data = {'simulation': simulation, 'test_type': self.args['test.type'],
                         'response_time': int(entry['responseTime']), 'request_name': entry['requestName'],
                         'response_code': entry['responseCode'], 'request_url': str(entry['url']),
                         'request_method': str(entry['method']), 'status': str(entry['status'])}
@@ -63,12 +60,12 @@ class TestResultsParser(object):
                 "measurement": "api_comparison",
                 "tags": {
                     "simulation": simulation,
-                    "users": self.args['count'],
-                    "test_type": self.args["type"],
+                    "users": self.args['VUSERS'],
+                    "test_type": self.args["test.type"],
                     "build_id": build_id,
                     "request_name": reqs[req]['request_name'],
                     "method": reqs[req]['method'],
-                    "duration": self.args['duration']
+                    "duration": self.args['DURATION']
                 },
                 "time": datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'),
                 "fields": {
@@ -94,25 +91,28 @@ class TestResultsParser(object):
 
             }
             points.append(influx_record)
-        print(points)
-        client = InfluxDBClient(self.args["influx_host"], 8086, username='', password='', database=COMPARISON_DATABASE)
+        client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
+                                database=COMPARISON_DATABASE)
         client.write_points(points)
         client.close()
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Simlog parser.')
-    parser.add_argument("-c", "--count", type=int, required=True, help="User count.")
-    parser.add_argument("-t", "--type", required=True, help="Test type.")
-    parser.add_argument("-e", "--environment", help='Target environment', default=None)
-    parser.add_argument("-d", "--duration", help='Test duration', default=None)
-    parser.add_argument("-r", "--rumpup", help='Rump up time', default=None)
-    parser.add_argument("-u", "--url", help='Environment url', default='')
-    parser.add_argument("-s", "--simulation", help='Test simulation', default=None)  # should be the same as on Grafana
-    parser.add_argument("-st", "--start_time", help='Test start time', default=None)
-    parser.add_argument("-et", "--end_time", help='Test end time', default=None)
-    parser.add_argument("-i", "--influx_host", help='InfluxDB host or IP', default=None)
-    return vars(parser.parse_args())
+    args = {}
+    with open("/mnt/jmeter/parameters.txt") as file:
+        for line in file:
+            split = line.split("=")
+            args[split[0]] = split[1].replace("\n", "")
+    if 'VUSERS' not in args:
+        args['VUSERS'] = 1
+    if 'test.type' not in args:
+        args['test.type'] = 'demo'
+    if 'DURATION' not in args:
+        args['DURATION'] = 10
+    if 'influx.host' not in args or 'influx.port' not in args or 'influx.db' not in args:
+        print("InfluxDB config not found in parameters.txt. Exit")
+        exit(0)
+    return args
 
 
 if __name__ == '__main__':

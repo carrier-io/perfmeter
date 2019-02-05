@@ -1,12 +1,11 @@
 influx.port=8086
 influx.db=jmeter
 lg.id=debug
-LOOP_COUNT=1
+DURATION=10
 VUSERS=1
 RAMP_UP=1
-simulation=TEST
-build.id=1
-project.id=TEST
+simulation=floodIO
+project.id=demo
 influx.host=carrier_influx
-test.type=TEST
-env.type=RP=TEST
+test.type=demo
+env.type=demo
