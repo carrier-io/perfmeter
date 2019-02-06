@@ -3,17 +3,17 @@
         <collectionProp name="Arguments.arguments">
           <elementProp name="projectName" elementType="Argument">
             <stringProp name="Argument.name">projectName</stringProp>
-            <stringProp name="Argument.value">${__P(project.id,TIGER)}</stringProp>
+            <stringProp name="Argument.value">${__P(project.id,demo)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="envType" elementType="Argument">
             <stringProp name="Argument.name">envType</stringProp>
-            <stringProp name="Argument.value">${__P(env.type,null)}</stringProp>
+            <stringProp name="Argument.value">${__P(env.type,demo)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="testType" elementType="Argument">
             <stringProp name="Argument.name">testType</stringProp>
-            <stringProp name="Argument.value">${__P(test.type,null)}</stringProp>
+            <stringProp name="Argument.value">${__P(test.type,demo)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="loadGenerator" elementType="Argument">
@@ -28,12 +28,12 @@
           </elementProp>
           <elementProp name="simulation" elementType="Argument">
             <stringProp name="Argument.name">simulation</stringProp>
-            <stringProp name="Argument.value">${__P(simulation,test_simulation)}</stringProp>
+            <stringProp name="Argument.value">${__P(simulation,test)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="influxDBHost" elementType="Argument">
             <stringProp name="Argument.name">influxDBHost</stringProp>
-            <stringProp name="Argument.value">${__P(influx.host,10.23.164.180)}</stringProp>
+            <stringProp name="Argument.value">${__P(influx.host,carrier_influx)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="influxDBPort" elementType="Argument">

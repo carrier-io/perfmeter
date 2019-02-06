@@ -13,8 +13,11 @@ python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 echo "START Running Jmeter on `date`"
 echo "JVM_ARGS=${JVM_ARGS}"
 echo "jmeter args=$@"
-
+echo "build.id=floodIO_${JOB_NAME}_${BUILD_ID}" >> /mnt/jmeter/test_info.txt
+echo "start_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
 jmeter $@
+echo "end_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
 
 python ./remove_listeners.py ${args// /%}
+python ./compare_build_metrix.py ${args// /%}
 echo "END Running Jmeter on `date`"
