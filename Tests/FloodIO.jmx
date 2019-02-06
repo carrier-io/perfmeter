@@ -61,7 +61,7 @@
           </elementProp>
           <elementProp name="simulation" elementType="Argument">
             <stringProp name="Argument.name">simulation</stringProp>
-            <stringProp name="Argument.value">${__P(simulation,floodIO)}</stringProp>
+            <stringProp name="Argument.value">${__P(simulation,test)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="env.type" elementType="Argument">
