@@ -28,7 +28,7 @@
           </elementProp>
           <elementProp name="simulation" elementType="Argument">
             <stringProp name="Argument.name">simulation</stringProp>
-            <stringProp name="Argument.value">${__P(simulation,flood_io)}</stringProp>
+            <stringProp name="Argument.value">${__P(simulation,test)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="influxDBHost" elementType="Argument">
