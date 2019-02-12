@@ -46,8 +46,8 @@ COPY Common/AddRemoveListener/ /
 COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
 COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSION/lib/ext
 COPY Tests /mnt/jmeter
-RUN chmod -R 777 /mnt/jmeter
-RUN chmod -R 777 /jmeter
+RUN sudo chmod -R 777 /mnt/jmeter
+RUN sudo chmod -R 777 /jmeter
 
 # 9 Application to run on starting the container
 ENTRYPOINT ["/launch.sh"]
