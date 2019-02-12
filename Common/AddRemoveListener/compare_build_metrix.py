@@ -16,20 +16,24 @@ class TestResultsParser(object):
         simulation = self.args['test_name']
         reqs = dict()
         test_time = time()
-        client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
-                                database=self.args["influx.db"])
-        raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + simulation +
-                            "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
-                            + str(self.args['end_time']) + "ms LIMIT 1")
-        for raw in list(raws.get_points()):
-            users = raw['startedThreads']
-            test_type = raw['testType']
-        build_id = "{}_{}_{}".format(test_type, users,
-                                     datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
-        results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + simulation +
-                               "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
-                               + str(self.args['end_time']) + "ms")
-        client.close()
+        results = dict()
+        try:
+            client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
+                                    database=self.args["influx.db"])
+            raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + simulation +
+                                "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
+                                + str(self.args['end_time']) + "ms LIMIT 1")
+            for raw in list(raws.get_points()):
+                users = raw['startedThreads']
+                test_type = raw['testType']
+            build_id = "{}_{}_{}".format(test_type, users,
+                                         datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + simulation +
+                                   "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
+                                   + str(self.args['end_time']) + "ms")
+            client.close()
+        except:
+            print("Unable to get data from InfluxDB. Please check connection to " + self.args["influx.host"])
         for entry in list(results.get_points()):
             try:
                 data = {'simulation': simulation, 'test_type': entry['testType'],
@@ -121,7 +125,7 @@ def parse_args(jmeter_execution_string):
             key = param.split("=")[0]
             args[str(key)[2:]] = param.split("=")[1]
     if 'influx.host' not in args:
-        print("InfluxDB in not configured. Exit")
+        print("InfluxDB is not configured. Exit")
         exit(0)
     if 'influx.port' not in args:
         args['influx.port'] = 8086
