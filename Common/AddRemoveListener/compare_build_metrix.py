@@ -13,7 +13,7 @@ class TestResultsParser(object):
 
     def parse_results(self):
         """Parse test results and send to comparison database"""
-        simulation = self.args['simulation']
+        simulation = self.args['test_name']
         reqs = dict()
         test_time = time()
         client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
@@ -107,11 +107,6 @@ class TestResultsParser(object):
 
 def parse_args(jmeter_execution_string):
     args = {}
-    test_name = jmeter_execution_string.split("-t%")[1].split(".jmx")[0]
-    if str(test_name).__contains__("/"):
-        args['simulation'] = test_name.split("/")[-1]
-    else:
-        args['simulation'] = test_name
     try:
         path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
         with open(path) as file:
@@ -136,6 +131,8 @@ def parse_args(jmeter_execution_string):
         for line in file:
             split = line.split("=")
             args[split[0]] = split[1].replace("\n", "")
+    if 'test_name' not in args:
+        args['test_name'] = 'test'
     return args
 
 
