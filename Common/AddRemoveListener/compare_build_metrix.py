@@ -4,8 +4,6 @@ import numpy as np
 import sys
 from influxdb import InfluxDBClient
 
-COMPARISON_DATABASE = 'comparison'
-
 
 class TestResultsParser(object):
     def __init__(self, arguments):
@@ -16,7 +14,6 @@ class TestResultsParser(object):
         simulation = self.args['test_name']
         reqs = dict()
         test_time = time()
-        results = dict()
         try:
             client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
                                     database=self.args["influx.db"])
@@ -33,7 +30,8 @@ class TestResultsParser(object):
                                    + str(self.args['end_time']) + "ms")
             client.close()
         except:
-            print("Unable to get data from InfluxDB. Please check connection to " + self.args["influx.host"])
+            print("Unable to get data from InfluxDB. Please check connection to " + self.args["influx.host"] + " " +
+                  self.args["influx.port"] + " " + self.args["influx.db"])
         for entry in list(results.get_points()):
             try:
                 data = {'simulation': simulation, 'test_type': entry['testType'],
@@ -104,22 +102,32 @@ class TestResultsParser(object):
             }
             points.append(influx_record)
         client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
-                                database=COMPARISON_DATABASE)
+                                database=self.args['comparison_db'])
         client.write_points(points)
         client.close()
 
 
 def parse_args(jmeter_execution_string):
     args = {}
+    params = jmeter_execution_string.split("%")
     try:
-        path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
+        isPropertyFile = False
+        for param in params:
+            if isPropertyFile:
+                path = param
+                break
+            if str(param).__contains__("-q"):
+                isPropertyFile = True
         with open(path) as file:
             for line in file:
                 split = line.split("=")
                 args[split[0]] = split[1].replace("\n", "")
     except:
         pass
-    params = jmeter_execution_string.split("%")
+    with open("/mnt/jmeter/test_info.txt") as file:
+        for line in file:
+            split = line.split("=")
+            args[split[0]] = split[1].replace("\n", "")
     for param in params:
         if str(param).__contains__("-J"):
             key = param.split("=")[0]
@@ -131,10 +139,8 @@ def parse_args(jmeter_execution_string):
         args['influx.port'] = 8086
     if 'influx.db' not in args:
         args['influx.db'] = 'jmeter'
-    with open("/mnt/jmeter/test_info.txt") as file:
-        for line in file:
-            split = line.split("=")
-            args[split[0]] = split[1].replace("\n", "")
+    if 'comparison_db' not in args:
+        args['comparison_db'] = 'comparison'
     if 'test_name' not in args:
         args['test_name'] = 'test'
     return args

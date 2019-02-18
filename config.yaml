@@ -10,9 +10,11 @@
 #  jira_project: XYZC                                 # Jira project ID
 #  assignee: some.dude                                # Jira id of default assignee
 #  issue_type: Bug                                    # Jira issue type (Default: Bug)
-#  labels: Performance, perfgun                                # Comaseparated list of lables for ticket
+#  labels: Performance, perfmeter                     # Comaseparated list of lables for ticket
 #  watchers: another.dude                             # Comaseparated list of Jira IDs for watchers
 #  jira_epic_key: XYZC-123                            # Jira epic key (or id)
 #influx:
 #  host: carrier_influx                               # Influx host DNS or IP
 #  port: 8086                                         # Influx port
+#  jmeter_db: jmeter                                  # Database name for jmeter test results (Default: jmeter)
+#  comparison_db: comparison                          # Database name for comparison builds (Default: comparison)

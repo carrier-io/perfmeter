@@ -13,17 +13,20 @@ These simple steps will run jMeter test against your application and generate ht
 
 `test_name` - name of the jMeter test file that will be run
 
-`config_file` - config file name
+`properties_file` - properties file name
+
+`your_local_path_to_config/config.yaml` - config.yaml file with InfluxDB, Jira and Report Portal parameters (described below)
 
 For example:
 
 ``` 
-docker run --rm\
+docker run --rm -u 0:0 \
        -v <your_local_path_to_tests>:/mnt/jmeter/ \
+       -v <your_local_path_to_config/config.yaml>:/tmp/ #optional
        -v <your_local_path_to_reports>:/tmp/reports \   #optional
        getcarrier/perfmeter:latest \
        -n -t /mnt/jmeter/<test_name> 
-       -q /mnt/jmeter/<config_file> \    #optional
+       -q /mnt/jmeter/<properties_file> \    #optional
        -j /tmp/reports/jmeter_$(date +%s).log \   #optional
        -l /tmp/reports/jmeter_$(date +%s).jtl -e \  # optional
        -o /tmp/reports/HtmlReport_$(date +%s)/    #optional
@@ -33,7 +36,7 @@ docker run --rm\
 Report is located in your `your_local_path_to_reports` folder
 
 ### Configuration
-Tests can be configured using `config_file` file.
+Tests can be configured using `properties_file` file.
 
 Config file example (parameters.txt):
 
@@ -56,4 +59,32 @@ env.type=TEST
 You can also pass parameters from the command line with the -J option. For example :
 ```
 ... -t /mnt/jmeter/<test_name> -JVUSERS=1 -JRAMP_UP=1 ...
+```
+
+Reporting can be configured using config.yaml file.
+
+You have to uncomment the necessary configuration section and pass parameters to use it in your test
+
+**config.yaml** file example:
+```
+# Reporting configuration section (all report types are optional)
+#reportportal:                                        # ReportPortal.io specific section
+#  rp_host: https://rp.com                            # url to ReportPortal.io deployment
+#  rp_token: XXXXXXXXXXXXX                            # ReportPortal authentication token
+#  rp_project_name: XXXXXX                            # Name of a Project in ReportPortal to send results to
+#jira:
+#  url: https://jira.com                              # Url to Jira
+#  username: some.dude                                # User to create tickets
+#  password: password                                 # password to user in Jira
+#  jira_project: XYZC                                 # Jira project ID
+#  assignee: some.dude                                # Jira id of default assignee
+#  issue_type: Bug                                    # Jira issue type (Default: Bug)
+#  labels: Performance, perfmeter                     # Comaseparated list of lables for ticket
+#  watchers: another.dude                             # Comaseparated list of Jira IDs for watchers
+#  jira_epic_key: XYZC-123                            # Jira epic key (or id)
+#influx:
+#  host: carrier_influx                               # Influx host DNS or IP
+#  port: 8086                                         # Influx port (Default: 8086)
+#  gatling_db: jmeter                                 # Database name for gatling test results (Default: jmeter)
+#  comparison_db: comparison                          # Database name for comparison builds (Default: comparison)
 ```

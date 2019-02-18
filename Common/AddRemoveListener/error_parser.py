@@ -338,7 +338,7 @@ def html_decode(s):
 
 def finding_error_string(error, arguments):
     error_str = arguments['test_name'] + "_" + str(error['Request URL']) + "_" + str(error['Error message']) + "_" \
-                    + error['Request name'] + "3"
+                    + error['Request name']
     return error_str
 
 
@@ -349,15 +349,25 @@ def get_hash_code(error, arguments):
 
 def parse_args(jmeter_execution_string):
     args = {}
+    params = jmeter_execution_string.split("%")
     try:
-        path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
+        isPropertyFile = False
+        for param in params:
+            if isPropertyFile:
+                path = param
+                break
+            if str(param).__contains__("-q"):
+                isPropertyFile = True
         with open(path) as file:
             for line in file:
                 split = line.split("=")
                 args[split[0]] = split[1].replace("\n", "")
     except:
         pass
-    params = jmeter_execution_string.split("%")
+    with open("/mnt/jmeter/test_info.txt") as file:
+        for line in file:
+            split = line.split("=")
+            args[split[0]] = split[1].replace("\n", "")
     for param in params:
         if str(param).__contains__("-J"):
             key = param.split("=")[0]
@@ -369,10 +379,6 @@ def parse_args(jmeter_execution_string):
         args['influx.port'] = 8086
     if 'influx.db' not in args:
         args['influx.db'] = 'jmeter'
-    with open("/mnt/jmeter/test_info.txt") as file:
-        for line in file:
-            split = line.split("=")
-            args[split[0]] = split[1].replace("\n", "")
     if 'test_name' not in args:
         args['test_name'] = 'test'
     return args
