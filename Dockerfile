@@ -10,12 +10,15 @@ ARG UNAME=carrier
 ARG UID=1001
 ARG GID=1001
 
+COPY rp_client_3.2.zip /tmp
+
 # 3 Install utilities
 RUN apt-get update && \
     apt-get install -y --no-install-recommends bash sudo git wget python python-dev python-pip && \
     python -m pip install --upgrade pip && \
     apt-get clean && \
-    python -m pip install 'numpy==1.16.0' 'influxdb==5.2.0' 'argparse==1.4.0' && \
+    python -m pip install setuptools==40.6.2 && \
+    python -m pip install /tmp/rp_client_3.2.zip 'numpy==1.16.0' 'PyYAML==3.13' 'jira==2.0.0' 'influxdb==5.2.0' 'argparse==1.4.0' 'requests==2.19.1' && \
     rm -rf /tmp/*
 
 # 4 Creating carrier user and making him sudoer
@@ -46,6 +49,7 @@ COPY Common/AddRemoveListener/ /
 COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
 COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSION/lib/ext
 COPY Tests /mnt/jmeter
+COPY config.yaml /tmp/
 
 # 9 Application to run on starting the container
 ENTRYPOINT ["/launch.sh"]

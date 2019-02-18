@@ -1,8 +1,8 @@
 influx.port=8086
 influx.db=jmeter
 lg.id=debug
-DURATION=10
-VUSERS=2
+DURATION=20
+VUSERS=5
 RAMP_UP=1
 test_name=test
 project.id=demo

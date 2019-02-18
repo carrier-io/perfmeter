@@ -4,8 +4,6 @@ import numpy as np
 import sys
 from influxdb import InfluxDBClient
 
-COMPARISON_DATABASE = 'comparison'
-
 
 class TestResultsParser(object):
     def __init__(self, arguments):
@@ -16,20 +14,24 @@ class TestResultsParser(object):
         simulation = self.args['test_name']
         reqs = dict()
         test_time = time()
-        client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
-                                database=self.args["influx.db"])
-        raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + simulation +
-                            "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
-                            + str(self.args['end_time']) + "ms LIMIT 1")
-        for raw in list(raws.get_points()):
-            users = raw['startedThreads']
-            test_type = raw['testType']
-        build_id = "{}_{}_{}".format(test_type, users,
-                                     datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
-        results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + simulation +
-                               "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
-                               + str(self.args['end_time']) + "ms")
-        client.close()
+        try:
+            client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
+                                    database=self.args["influx.db"])
+            raws = client.query("SELECT * FROM virtualUsers WHERE simulation=\'" + simulation +
+                                "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
+                                + str(self.args['end_time']) + "ms LIMIT 1")
+            for raw in list(raws.get_points()):
+                users = raw['startedThreads']
+                test_type = raw['testType']
+            build_id = "{}_{}_{}".format(test_type, users,
+                                         datetime.datetime.fromtimestamp(test_time).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            results = client.query("SELECT * FROM requestsRaw WHERE simulation=\'" + simulation +
+                                   "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
+                                   + str(self.args['end_time']) + "ms")
+            client.close()
+        except:
+            print("Unable to get data from InfluxDB. Please check connection to " + self.args["influx.host"] + " " +
+                  self.args["influx.port"] + " " + self.args["influx.db"])
         for entry in list(results.get_points()):
             try:
                 data = {'simulation': simulation, 'test_type': entry['testType'],
@@ -100,37 +102,45 @@ class TestResultsParser(object):
             }
             points.append(influx_record)
         client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
-                                database=COMPARISON_DATABASE)
+                                database=self.args['comparison_db'])
         client.write_points(points)
         client.close()
 
 
 def parse_args(jmeter_execution_string):
     args = {}
+    params = jmeter_execution_string.split("%")
     try:
-        path = jmeter_execution_string.split("-q%")[1].split(".txt")[0] + ".txt"
+        isPropertyFile = False
+        for param in params:
+            if isPropertyFile:
+                path = param
+                break
+            if str(param).__contains__("-q"):
+                isPropertyFile = True
         with open(path) as file:
             for line in file:
                 split = line.split("=")
                 args[split[0]] = split[1].replace("\n", "")
     except:
         pass
-    params = jmeter_execution_string.split("%")
+    with open("/mnt/jmeter/test_info.txt") as file:
+        for line in file:
+            split = line.split("=")
+            args[split[0]] = split[1].replace("\n", "")
     for param in params:
         if str(param).__contains__("-J"):
             key = param.split("=")[0]
             args[str(key)[2:]] = param.split("=")[1]
     if 'influx.host' not in args:
-        print("InfluxDB in not configured. Exit")
+        print("InfluxDB is not configured. Exit")
         exit(0)
     if 'influx.port' not in args:
         args['influx.port'] = 8086
     if 'influx.db' not in args:
         args['influx.db'] = 'jmeter'
-    with open("/mnt/jmeter/test_info.txt") as file:
-        for line in file:
-            split = line.split("=")
-            args[split[0]] = split[1].replace("\n", "")
+    if 'comparison_db' not in args:
+        args['comparison_db'] = 'comparison'
     if 'test_name' not in args:
         args['test_name'] = 'test'
     return args
