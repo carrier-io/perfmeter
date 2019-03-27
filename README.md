@@ -43,16 +43,16 @@ Config file example (parameters.txt):
 ```
 influx.port=8086
 influx.db=jmeter
+influx.host=carrier_influx
+comparison_db=comparison
 lg.id=debug
-LOOP_COUNT=1
-VUSERS=1
+DURATION=20
+VUSERS=5
 RAMP_UP=1
-test_name=TEST
-build.id=1
-project.id=TEST
-influx.host=<influx_host>
-test.type=TEST
-env.type=TEST
+test_name=test
+project.id=demo
+test.type=demo
+env.type=demo
 ```
 
 
@@ -86,6 +86,6 @@ You have to uncomment the necessary configuration section and pass parameters to
 #influx:
 #  host: carrier_influx                               # Influx host DNS or IP
 #  port: 8086                                         # Influx port (Default: 8086)
-#  gatling_db: jmeter                                 # Database name for gatling test results (Default: jmeter)
+#  jmeter_db: jmeter                                  # Database name for jmeter test results (Default: jmeter)
 #  comparison_db: comparison                          # Database name for comparison builds (Default: comparison)
 ```

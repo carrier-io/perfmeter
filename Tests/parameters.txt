@@ -1,11 +1,12 @@
 influx.port=8086
 influx.db=jmeter
+influx.host=carrier_influx
+comparison_db=comparison
 lg.id=debug
 DURATION=20
 VUSERS=5
 RAMP_UP=1
 test_name=test
 project.id=demo
-influx.host=carrier_influx
 test.type=demo
 env.type=demo

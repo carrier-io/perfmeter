@@ -1,5 +1,5 @@
 # 1 Use Java 8 slim JRE
-FROM openjdk:8-jre-slim
+FROM openjdk:8-jdk
 
 # 2 JMeter version passed via command line argument (docker build --build-arg JMETER_VERSION=5.0 -t jmeter -f Dockerfile  .)
 ARG JMETER_VERSION=5.0
@@ -26,7 +26,18 @@ RUN groupadd -g $GID $UNAME
 RUN useradd -m -u $UID -g $GID -s /bin/bash $UNAME
 RUN echo "carrier    ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# 5 Install JMeter
+# 5 Installing Java Jolokia
+RUN  mkdir /opt/java && cd /opt/java \
+ && wget -O jolokia-jvm-1.6.0-agent.jar \
+ http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/1.6.0/jolokia-jvm-1.6.0-agent.jar
+
+# 6 Installing Telegraf
+RUN cd /tmp && wget https://dl.influxdata.com/telegraf/releases/telegraf_1.8.3-1_amd64.deb && \
+    dpkg -i telegraf_1.8.3-1_amd64.deb
+COPY telegraf.conf /etc/telegraf/telegraf.conf
+COPY jolokia.conf /opt
+
+# 7 Install JMeter
 RUN mkdir /jmeter
 RUN chown -R ${UNAME}:${UNAME} /jmeter
 RUN chown -R ${UNAME}:${UNAME} /jmeter/
@@ -36,13 +47,13 @@ RUN   cd /jmeter/ \
       && tar -xzf apache-jmeter-$JMETER_VERSION.tgz \
       && rm apache-jmeter-$JMETER_VERSION.tgz
 
-# 6 Set JMeter Home
+# 8 Set JMeter Home
 ENV JMETER_HOME /jmeter/apache-jmeter-$JMETER_VERSION/
 
-# 7 Add JMeter to the Path
+# 9 Add JMeter to the Path
 ENV PATH $JMETER_HOME/bin:$PATH
 
-# 8 Copy all necessary files to container image
+# 10 Copy all necessary files to container image
 COPY Common/launch.sh /
 RUN sudo chmod +x /launch.sh
 COPY Common/AddRemoveListener/ /
@@ -51,5 +62,5 @@ COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSIO
 COPY Tests /mnt/jmeter
 COPY config.yaml /tmp/
 
-# 9 Application to run on starting the container
+# 11 Application to run on starting the container
 ENTRYPOINT ["/launch.sh"]
