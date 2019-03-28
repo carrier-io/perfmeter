@@ -1,22 +1,86 @@
 #!/bin/bash
 
+args=$@
+if [[ ${args} == *"-q "* ]]; then
+IFS=" " read -ra PARAMS <<< "$args"
+for index in "${!PARAMS[@]}"
+do
+    if [[ ${PARAMS[index]} == "-q" ]]; then
+        property_file=${PARAMS[index + 1]}
+    fi
+done
+fi
+
+if [[ "${property_file}" ]]; then
+echo "Extracting InfluxDB configuration from property file - $property_file"
+while IFS= read -r param
+do
+          if [[ $param =~ influx.host=(.+) ]]; then
+            influx_host=${BASH_REMATCH[1]}
+          fi
+          if [[ $param =~ influx.port=(.+) ]]; then
+            influx_port=${BASH_REMATCH[1]}
+          fi
+          if [[ $param =~ influx.db=(.+) ]]; then
+            jmeter_db=${BASH_REMATCH[1]}
+          fi
+          if [[ $param =~ comparison_db=(.+) ]]; then
+            comparison_db=${BASH_REMATCH[1]}
+          fi
+done < "$property_file"
+fi
+
 export config=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()); print y")
 if [[ "${config}" != "None" ]]; then
+echo "Extracting InfluxDB configuration from config.yaml"
 export influx_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('host')")
-export influx_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('port',8086)")
-export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('jmeter_db', 'jmeter')")
-export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('comparison_db', 'comparison')")
+export influx_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('port', '')")
+export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('jmeter_db', '')")
+export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('comparison_db', '')")
 export report_portal=$(python -c "import yaml; print yaml.load(open('/tmp/config.yaml').read()).get('reportportal',{})")
 export jira=$(python -c "import yaml; print yaml.load(open('/tmp/config.yaml').read()).get('jira',{})")
 else
-export influx_host="None"
 export jira="{}"
 export report_portal="{}"
 fi
 
-args=$@
+if [[ ${args} == *"-Jinflux.host"* || ${args} == *"-Jinflux.port"* || ${args} == *"-Jjmeter_db"* || ${args} == *"-Jcomparison_db"* ]]; then
+arr=(${args// / })
+for i in "${arr[@]}"; do
+          if [[ $i =~ -Jinflux.host=(.+) ]]; then
+            influx_host=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -Jinflux.port=(.+) ]]; then
+            influx_port=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -Jinflux.db=(.+) ]]; then
+            jmeter_db=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -Jcomparison_db=(.+) ]]; then
+            comparison_db=${BASH_REMATCH[1]}
+          fi
+      done
+fi
 
-if [[ "${influx_host}" != "None" ]]; then
+if [[ -z "${influx_port}" ]]; then
+influx_port=8086
+fi
+
+if [[ -z "${jmeter_db}" ]]; then
+jmeter_db="jmeter"
+fi
+
+if [[ -z "${comparison_db}" ]]; then
+comparison_db="comparison"
+fi
+
+sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
+sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegraf/telegraf.conf
+sudo service telegraf restart
+DEFAULT_EXECUTION="/docker-java-home/bin/java"
+JOLOKIA_AGENT="-javaagent:/opt/java/jolokia-jvm-1.6.0-agent.jar=config=/opt/jolokia.conf"
+
+if [[ "${influx_host}" ]]; then
 echo "influx.host=${influx_host}" >> /mnt/jmeter/test_info.txt
 echo "influx.port=${influx_port}" >> /mnt/jmeter/test_info.txt
 echo "influx.db=${jmeter_db}" >> /mnt/jmeter/test_info.txt
@@ -30,6 +94,9 @@ fi
 if [[ ${args} != *"-Jinflux.db"* ]]; then
 args="${args} -Jinflux.db=${jmeter_db}"
 fi
+if [[ ${args} != *"-Jcomparison_db"* ]]; then
+args="${args} -Jcomparison_db=${comparison_db}"
+fi
 fi
 set -e
 export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
@@ -40,7 +107,9 @@ echo "START Running Jmeter on `date`"
 echo "JVM_ARGS=${JVM_ARGS}"
 echo "jmeter args=${args}"
 echo "start_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
-jmeter ${args}
+cd "jmeter/apache-jmeter-5.0/bin/"
+"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
+cd "/"
 echo "end_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
 
 python ./remove_listeners.py ${args// /%}
