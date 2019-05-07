@@ -1,18 +1,31 @@
-from time import time
-import warnings
-import contextlib
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import argparse
+import csv
+from difflib import SequenceMatcher
+
 import traceback
+from time import time
 import sys
+import warnings
 import requests
-from reportportal_client import ReportPortalServiceAsync
-from influxdb import InfluxDBClient
-from functools import partial
-import yaml
-from jira import JIRA
+import contextlib
+import os
+import logging
+import logging_loki
+
 import re
+from jira import JIRA
 import hashlib
+import yaml
+from reportportal_client import ReportPortalServiceAsync
+from functools import partial
 
-
+UNDEFINED = "undefined"
+FIELDNAMES = 'action', 'simulation', 'thread', "simulation_name", "request_name", \
+             "request_start", "request_end", "status", "error_message", "error"
+ERROR_FIELDS = 'Response', 'Request_params', 'Error_message'
 PATH_TO_CONFIG = "/tmp/config.yaml"
 
 
@@ -25,42 +38,147 @@ class partialmethod(partial):
                        **(self.keywords or {}))
 
 
-class TestResultsParser(object):
+class SimulationLogParser(object):
     def __init__(self, arguments):
         self.args = arguments
 
-    def parse_results(self):
-        """Parse test results and send to comparison database"""
-        simulation = self.args['test_name']
-        errors = {}
+    def parse_log(self):
+        """Parse line with error and send to database"""
+        simulation = self.args['simulation']
+        path = self.args['file']
         unparsed_counter = 0
-        raws = dict()
-        try:
-            client = InfluxDBClient(self.args["influx.host"], self.args["influx.port"], username='', password='',
-                                    database=self.args["influx.db"])
-            raws = client.query("SELECT * FROM errorMessage WHERE simulation=\'" + simulation +
-                                "\' and time >= " + str(self.args['start_time']) + "ms and time <= "
-                                + str(self.args['end_time']) + "ms")
-            client.close()
-        except:
-            print("Unable to get data from InfluxDB. Please check connection to " + self.args["influx.host"])
-        for error in list(raws.get_points()):
-            try:
-                count = 1
-                key = "%s_%s_%s_%s" % (error['requestName'], error['method'], error['responseCode'], error['errorMessage'])
-                if key not in errors:
-                    errors[key] = {"Request name": error['requestName'], "Method": error['method'], 'Error count': count,
-                                   'Environment': error['envType'], "Response code": error['responseCode'],
-                                   "Error message": error['errorMessage'], "Request URL": error['url'],
-                                   "Request params": error['params'], "Request headers": error['requestHeaders'],
-                                   "Response body": error['responseBody']}
-                else:
-                    errors[key]['Error count'] += 1
-            except:
-                unparsed_counter += 1
+        errors = {}
+        with open(path, 'r+', encoding="utf-8") as tsv:
+            for entry in csv.DictReader(tsv, delimiter="\t", fieldnames=FIELDNAMES, restval="not_found"):
+                if len(entry) >= 8 and (entry['status'] == "KO"):
+                    try:
+                        data = self.parse_entry(entry)
+                        data['simulation'] = simulation
+                        data["request_params"] = self.remove_session_id(data["request_params"])
+                        count = 1
+                        key = "%s_%s_%s" % (data['request_name'], data['request_method'], data['response_code'])
+                        if key not in errors:
+                            errors[key] = {"Request name": data['request_name'], "Method": data['request_method'],
+                                           "Request headers": data["headers"], 'Error count': count,
+                                           "Response code": data['response_code'], "Error code": data['error_code'],
+                                           "Request URL": data['request_url'],
+                                           "Request_params": [data['request_params']], "Response": [data['response']],
+                                           "Error_message": [data['error_message']]}
+                        else:
+                            errors[key]['Error count'] += 1
+                            for field in ERROR_FIELDS:
+                                same = self.check_dublicate(errors[key], data, field)
+                                if same is True:
+                                    break
+                                else:
+                                    errors[key][field].append(data[field.lower()])
+                    except Exception as e:
+                        print(e)
+                        unparsed_counter += 1
+                        pass
+
         if unparsed_counter > 0:
             print("Unparsed errors: %d" % unparsed_counter)
         return errors
+
+    def check_dublicate(self, entry, data, field):
+        for params in entry[field]:
+            if SequenceMatcher(None, str(data[field.lower()]), str(params)).ratio() > 0.7:
+                return True
+
+    def parse_entry(self, values):
+        """Parse error entry"""
+        values['test_type'] = self.args['type']
+        values['response_time'] = int(values['request_end']) - int(values['request_start'])
+        values['request_start'] += "000000"
+        values['response_code'] = self.extract_response_code(values['error'])
+        values['error_code'] = self.extract_error_code(values['error'])
+        values['request_url'], values['request_params'], values['request_method'] = self.parse_request(values['error'])
+        values['headers'] = self.html_decode(self.escape_for_json(self.parse_headers(values['error'])))
+        values['response'] = self.html_decode(self.parse_response(values['error']))
+        values['error'] = self.escape_for_json(values['error'])
+        values['error_message'] = self.escape_for_json(values['error_message'])
+
+        return values
+
+    def extract_error_code(self, error_code):
+        """Extract code of error from response body"""
+        error_code_regex = re.search(r'("code"|"Code"): ?"?(-?\d+)"?,', error_code)
+        if error_code_regex and error_code_regex.group(2):
+            return error_code_regex.group(2)
+        return UNDEFINED
+
+    def remove_session_id(self, param):
+        sessionid_regex = re.search(r'(SessionId|sessionID|sessionId|SessionID)=(.*?&|.*)', param)
+        if sessionid_regex and sessionid_regex.group(2):
+            return param.replace(sessionid_regex.group(2), '_...')
+        return param
+
+    def extract_response_code(self, error):
+        """Extract response code"""
+        code_regexp = re.search(r"HTTP Code: ?([a-zA-Z]*?\(?(\d+)\)?),", error)
+        if code_regexp and code_regexp.group(2):
+            return code_regexp.group(2)
+        return UNDEFINED
+
+    def html_decode(self, s):
+        html_codes = (
+            ("'", '&#39;'),
+            ("/", '&#47;'),
+            ('"', '&quot;'),
+            (':', '%3A'),
+            ('/', '%2F'),
+            ('.', '%2E'),
+            ('&', '&amp;'),
+            ('>', '&gt;'),
+            ('|', '%7C'),
+            ('<', '&lt;'),
+            ('\\"', '"')
+        )
+        for code in html_codes:
+            s = s.replace(code[1], code[0])
+        return s
+
+    def escape_for_json(self, string):
+        if isinstance(string, str):
+            return string.replace('"', '&quot;') \
+                .replace("\\", "&#92;") \
+                .replace("/", "&#47;") \
+                .replace("<", "&lt;") \
+                .replace(">", "&gt;")
+        return string
+
+    def parse_request(self, param):
+        regex = re.search(r"Request: ?(.+?) ", param)
+        if regex and regex.group(1):
+            request_parts = regex.group(1).split("?")
+            url = request_parts[0]
+            params = request_parts[len(request_parts) - 1] if len(request_parts) >= 2 else ''
+            params = params + " " + self.parse_params(param)
+            params = params.replace(":", "=")
+            url = self.html_decode(self.escape_for_json(url))
+            params = self.escape_for_json(params)
+            method = re.search(r" ([A-Z]+) headers", param).group(1)
+            return url, params, method
+        return UNDEFINED, UNDEFINED, UNDEFINED
+
+    def parse_headers(self, param):
+        regex = re.search(r"headers: ?(.+?) ?,", param)
+        if regex and regex.group(1):
+            return regex.group(1)
+        return UNDEFINED
+
+    def parse_params(self, param):
+        regex = re.search(r"formParams: ?(.+?) ?,", param)
+        if regex and regex.group(1):
+            return regex.group(1)
+        return ""
+
+    def parse_response(self, param):
+        regex = re.search(r"Response: ?(.+)$", param)
+        if regex and regex.group(1):
+            return self.escape_for_json(regex.group(1))
+        return None
 
 
 class ReportPortal:
@@ -103,6 +221,24 @@ class ReportPortal:
         print("Error occurred: {}".format(exc_info[1]))
         traceback.print_exception(*exc_info)
 
+    def html_decode(self, s):
+        html_codes = (
+            ("'", '&#39;'),
+            ("/", '&#47;'),
+            ('"', '&quot;'),
+            (':', '%3A'),
+            ('/', '%2F'),
+            ('.', '%2E'),
+            ('&', '&amp;'),
+            ('>', '&gt;'),
+            ('|', '%7C'),
+            ('<', '&lt;'),
+            ('\\"', '"')
+        )
+        for code in html_codes:
+            s = s.replace(code[1], code[0])
+        return s
+
     def log_message(self, service, message, errors, level='WARN'):
         if errors[message] is not 'undefined':
             if isinstance(errors[message], list):
@@ -111,19 +247,27 @@ class ReportPortal:
                     for i, error in enumerate(errors[message]):
                         log += message + ' ' + str(i + 1) + ': ' + error + ';;\n'
                     service.log(time=self.timestamp(),
-                                message="{}".format(html_decode(log)),
+                                message="{}".format(self.html_decode(log)),
                                 level="{}".format(level))
                 elif not str(errors[message])[2:-2].__contains__('undefined'):
                     service.log(time=self.timestamp(),
-                                message="{}: {}".format(message, html_decode(str(errors[message])[2:-2])),
+                                message="{}: {}".format(message, self.html_decode(str(errors[message])[2:-2])),
                                 level="{}".format(level))
             else:
                 service.log(time=self.timestamp(),
-                            message="{}: {}".format(message, html_decode(str(errors[message]))),
+                            message="{}: {}".format(message, self.html_decode(str(errors[message]))),
                             level="{}".format(level))
 
-    def log_unique_error_id(self, service, request_name, method, response_code):
-        error_id = method + '_' + request_name + "_" + response_code
+    def log_unique_error_id(self, service, request_name, method, response_code, error_code):
+        error_id = ""
+        if method is not 'undefined':
+            error_id += method + '_' + request_name
+        else:
+            error_id += request_name
+        if response_code is not 'undefined':
+            error_id += '_' + response_code
+        elif error_code is not 'undefined':
+            error_id += '_' + error_code
         service.log(time=self.timestamp(), message=error_id, level='ERROR')
 
     def get_item_name(self, entry):
@@ -149,31 +293,30 @@ class ReportPortal:
                                      description='This simulation has {} fails'.format(errors_len))
                 for key in errors:
                     # Start test item.
-                    item_name = "{} {} {}".format(str(errors[key]['Request name']),
-                                                  str(errors[key]['Method']),
-                                                  str(errors[key]['Response code']))
+                    item_name = self.get_item_name(errors[key])
                     service.start_test_item(name=item_name,
                                             description="This request was failed {} times".format(
                                                 errors[key]['Error count']),
-                                            tags=[self.args['test_name'], errors[key]['Request name'], 'jmeter_test'],
+                                            tags=[self.args['type'], errors[key]['Request URL'], 'gatling_test'],
                                             start_time=self.timestamp(),
                                             item_type="STEP",
-                                            parameters={"simulation": self.args['test_name'],
+                                            parameters={"simulation": self.args['simulation'],
                                                         'duration': int(self.args['end_time'])/1000
-                                                        - int(self.args['start_time'])/1000})
+                                                        - int(self.args['start_time'])/1000,
+                                                        'test type': self.args['type']})
 
                     self.log_message(service, 'Request name', errors[key], 'WARN')
                     self.log_message(service, 'Method', errors[key], 'WARN')
                     self.log_message(service, 'Request URL', errors[key], 'WARN')
-                    self.log_message(service, 'Request params', errors[key], 'WARN')
+                    self.log_message(service, 'Request_params', errors[key], 'WARN')
                     self.log_message(service, 'Request headers', errors[key], 'INFO')
-                    self.log_message(service, 'Environment', errors[key], 'INFO')
                     self.log_message(service, 'Error count', errors[key], 'WARN')
-                    self.log_message(service, 'Error message', errors[key], 'WARN')
+                    self.log_message(service, 'Error code', errors[key], 'WARN')
+                    self.log_message(service, 'Error_message', errors[key], 'WARN')
                     self.log_message(service, 'Response code', errors[key], 'WARN')
-                    self.log_message(service, 'Response body', errors[key], 'WARN')
+                    self.log_message(service, 'Response', errors[key], 'WARN')
                     self.log_unique_error_id(service, errors[key]['Request name'], errors[key]['Method'],
-                                             errors[key]['Response code'])
+                                             errors[key]['Response code'], errors[key]['Error code'])
 
                     service.finish_test_item(end_time=self.timestamp(), status="FAILED")
             else:
@@ -280,7 +423,10 @@ class JiraWrapper:
                 issues.append(each)
         if len(issues) == 1:
             issue = issues[0]
-            print(issuetype + 'issue already exists:' + issue.key)
+            if len(issues) > 1:
+                print('  more then 1 issue with the same summary')
+            else:
+                print(issuetype + 'issue already exists:' + issue.key)
         else:
             issue = self.post_issue(issue_data)
             created = True
@@ -289,56 +435,26 @@ class JiraWrapper:
 
 def create_description(error, arguments):
     description = ""
-    if arguments['test_name']:
-        description += "*Simulation*: " + arguments['test_name'] + "\n"
+    if arguments['simulation']:
+        description += "*Simulation*: " + arguments['simulation'] + "\n"
     if error['Request URL']:
         description += "*Request URL*: " + error['Request URL'] + "\n"
-    if error['Request headers']:
-        description += "*Request headers*: " + error['Request headers'] + "\n"
-    if error['Request params']:
-        description += "*Request params*: " + html_decode(str(error['Request params'])).replace("&", "\n") + "\n"
-    if error['Error message']:
-        description += "*Error message*: " + str(error['Error message']) + "\n"
+    if error['Request_params']:
+        description += "*Request params*: " + str(error['Request_params'])[2:-2].replace(" ", "\n") + "\n"
+    if error['Error_message']:
+        description += "*Error Message*: " + str(error['Error_message']) + "\n"
     if error['Error count']:
         description += "*Error count*: " + str(error['Error count']) + "\n"
     if error['Response code']:
         description += "*Response code*: " + error['Response code'] + "\n"
-    if error['Response body']:
-        description += "*Response body*: " + str(error['Response body']).replace("\n", "") + "\n"
+    if error['Response']:
+        description += "*Response body*: " + str(error['Response']).replace("\n", "") + "\n"
+
     return description
 
 
-def html_decode(s):
-    html_codes = (
-        ("'", '&#39;'),
-        ("/", '&#47;'),
-        ('"', '&quot;'),
-        (':', '%3A'),
-        ('/', '%2F'),
-        ('.', '%2E'),
-        ('&', '&amp;'),
-        ('>', '&gt;'),
-        ('|', '%7C'),
-        ('<', '&lt;'),
-        ('\\"', '"'),
-        ('[', '%5B'),
-        (']', '%5D'),
-        ('?', '%3F'),
-        ('{', '%7B'),
-        ('}', '%7D'),
-        ('$', '%24'),
-        ('@', '%40'),
-        ('"', '%22'),
-        ('=', '%3D'),
-        ('+', '%2B')
-    )
-    for code in html_codes:
-        s = s.replace(code[1], code[0])
-    return s
-
-
 def finding_error_string(error, arguments):
-    error_str = arguments['test_name'] + "_" + str(error['Request URL']) + "_" + str(error['Error message']) + "_" \
+    error_str = arguments['simulation'] + "_" + error['Request URL'] + "_" + str(error['Error_message']) + "_" \
                     + error['Request name']
     return error_str
 
@@ -348,41 +464,16 @@ def get_hash_code(error, arguments):
     return hashlib.sha256(hash_string.encode('utf-8')).hexdigest()
 
 
-def parse_args(jmeter_execution_string):
-    args = {}
-    params = jmeter_execution_string.split("%")
-    try:
-        isPropertyFile = False
-        for param in params:
-            if isPropertyFile:
-                path = param
-                break
-            if str(param).__contains__("-q"):
-                isPropertyFile = True
-        with open(path) as file:
-            for line in file:
-                split = line.split("=")
-                args[split[0]] = split[1].replace("\n", "")
-    except:
-        pass
-    with open("/mnt/jmeter/test_info.txt") as file:
-        for line in file:
-            split = line.split("=")
-            args[split[0]] = split[1].replace("\n", "")
-    for param in params:
-        if str(param).__contains__("-J"):
-            key = param.split("=")[0]
-            args[str(key)[2:]] = param.split("=")[1]
-    if 'influx.host' not in args:
-        print("InfluxDB is not configured. Exit")
-        exit(0)
-    if 'influx.port' not in args:
-        args['influx.port'] = 8086
-    if 'influx.db' not in args:
-        args['influx.db'] = 'jmeter'
-    if 'test_name' not in args:
-        args['test_name'] = 'test'
-    return args
+def get_args():
+    parser = argparse.ArgumentParser(description='Simlog parser.')
+    parser.add_argument("-f", "--file", help="file path", default=None)
+    parser.add_argument("-t", "--type", help="Test type.")
+    parser.add_argument("-s", "--simulation", help='Test simulation', default=None)  # should be the same as on Grafana
+    parser.add_argument("-st", "--start_time", help='Test start time', default=None)
+    parser.add_argument("-et", "--end_time", help='Test end time', default=None)
+    parser.add_argument("-i", "--influx_host", help='InfluxDB host or IP', default=None)
+    parser.add_argument("-p", "--influx_port", help='InfluxDB port', default=None)
+    return vars(parser.parse_args())
 
 
 def report_errors(errors, args):
@@ -392,6 +483,30 @@ def report_errors(errors, args):
     if config:
         report_types = list(config.keys())
 
+    if report_types.__contains__('loki'):
+        loki_host = config['loki'].get("host")
+        loki_port = config['loki'].get("port")
+        if not all([loki_host, loki_port]):
+            print("Loki configuration values missing, proceeding "
+                  "without Loki")
+        else:
+            loki_url = "{}:{}/api/prom/push".format(loki_host, loki_port)
+            handler = logging_loki.LokiHandler(
+                url=loki_url,
+                tags={"Test": args['simulation']},
+            )
+            error_message = "Error key: {};; Error count: {};; Request name: {};; Method: {};; Response code: {};;" \
+                            " URL: {};; Error message: {};; Request params: {};; Headers: {};; Response body: {};;"
+            logger = logging.getLogger("error-logger")
+            logger.addHandler(handler)
+            for error in errors:
+                logger.error(
+                    error_message.format(error, str(errors[error]['Error count']), str(errors[error]['Request name']),
+                                         str(errors[error]['Method']), str(errors[error]['Response code']),
+                                         str(errors[error]['Request URL']), str(errors[error]['Error_message']),
+                                         str(errors[error]['Request_params']), str(errors[error]['Request headers']),
+                                         str(errors[error]['Response'])),
+                )
     rp_service = None
     if report_types.__contains__('reportportal'):
         rp_project = config['reportportal'].get("rp_project_name")
@@ -399,7 +514,8 @@ def report_errors(errors, args):
         rp_token = config['reportportal'].get("rp_token")
         rp_launch_name = config['reportportal'].get("rp_launch_name")
         if not (rp_project and rp_url and rp_token and rp_launch_name):
-            print("ReportPortal configuration values missing, proceeding without report portal integration")
+            print("ReportPortal configuration values missing, proceeding "
+                  "without report portal integration ")
         else:
             rp_service = ReportPortal(errors, args, rp_url, rp_token, rp_project, rp_launch_name)
     if rp_service:
@@ -435,7 +551,8 @@ def report_errors(errors, args):
 
 
 if __name__ == '__main__':
-    args = parse_args(sys.argv[1])
-    testResultsParser = TestResultsParser(args)
-    errors = testResultsParser.parse_results()
+    print("Parsing simulation log")
+    args = get_args()
+    logParser = SimulationLogParser(args)
+    errors = logParser.parse_log()
     report_errors(errors, args)
