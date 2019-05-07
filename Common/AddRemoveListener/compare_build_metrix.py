@@ -1,7 +1,6 @@
 import argparse
 import csv
 import re
-import os
 from time import time
 import datetime
 import numpy as np
@@ -9,9 +8,6 @@ from influxdb import InfluxDBClient
 
 
 UNDEFINED = "undefined"
-
-RESULTS_FOLDER = '/opt/gatling/results/'
-SIMLOG_NAME = 'simulation.log'
 
 FIELDNAMES = 'action', 'simulation', 'thread', "simulation_name", "request_name", \
              "request_start", "request_end", "status", "error_message", "error"
@@ -149,16 +145,6 @@ class SimulationLogParser(object):
         if code_regexp and code_regexp.group(2):
             return code_regexp.group(2)
         return UNDEFINED
-
-    @staticmethod
-    def find_log():
-        """Walk file tree to find simulation log"""
-        for d, dirs, files in os.walk(RESULTS_FOLDER):
-            for f in files:
-                if f == SIMLOG_NAME:
-                    simlog_folder = os.path.basename(d)
-                    return os.path.join(RESULTS_FOLDER, simlog_folder, SIMLOG_NAME)
-        print("error no simlog")
 
     def parse_request(self, param):
         regex = re.search(r"Request: ?(.+?) ", param)

@@ -26,8 +26,6 @@ UNDEFINED = "undefined"
 FIELDNAMES = 'action', 'simulation', 'thread', "simulation_name", "request_name", \
              "request_start", "request_end", "status", "error_message", "error"
 ERROR_FIELDS = 'Response', 'Request_params', 'Error_message'
-RESULTS_FOLDER = '/opt/gatling/results/'
-SIMLOG_NAME = 'simulation.log'
 PATH_TO_CONFIG = "/tmp/config.yaml"
 
 
@@ -82,16 +80,6 @@ class SimulationLogParser(object):
         if unparsed_counter > 0:
             print("Unparsed errors: %d" % unparsed_counter)
         return errors
-
-    @staticmethod
-    def find_log():
-        """Walk file tree to find simulation log"""
-        for d, dirs, files in os.walk(RESULTS_FOLDER):
-            for f in files:
-                if f == SIMLOG_NAME:
-                    simlog_folder = os.path.basename(d)
-                    return os.path.join(RESULTS_FOLDER, simlog_folder, SIMLOG_NAME)
-        print("error no simlog")
 
     def check_dublicate(self, entry, data, field):
         for params in entry[field]:
