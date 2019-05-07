@@ -30,19 +30,51 @@ do
 done < "$property_file"
 fi
 
-export config=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()); print y")
+export config=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()); print(y)")
 if [[ "${config}" != "None" ]]; then
 echo "Extracting InfluxDB configuration from config.yaml"
-export influx_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('host')")
-export influx_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('port', '')")
-export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('jmeter_db', '')")
-export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print y.get('comparison_db', '')")
-export report_portal=$(python -c "import yaml; print yaml.load(open('/tmp/config.yaml').read()).get('reportportal',{})")
-export jira=$(python -c "import yaml; print yaml.load(open('/tmp/config.yaml').read()).get('jira',{})")
+export influx_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('host'))")
+export influx_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('port', ''))")
+export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('jmeter_db', ''))")
+export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('comparison_db', ''))")
+export report_portal=$(python -c "import yaml; print(yaml.load(open('/tmp/config.yaml').read()).get('reportportal',{}))")
+export jira=$(python -c "import yaml; print(yaml.load(open('/tmp/config.yaml').read()).get('jira',{}))")
+export loki=$(python -c "import yaml; print(yaml.load(open('/tmp/config.yaml').read()).get('loki',{}))")
 else
 export jira="{}"
 export report_portal="{}"
+export loki="{}"
 fi
+
+if [[ -z "${test_type}" ]]; then
+export test_type="test"
+fi
+
+if [[ ${args} == *"-Jtest_name="* ]]; then
+arr=(${args// / })
+for i in "${arr[@]}"; do
+          if [[ $i =~ -Jtest_name=(.+) ]]; then
+            export test_name=${BASH_REMATCH[1]}
+          fi
+    done
+else
+export test_name="test"
+fi
+
+for i in "${arr[@]}"; do
+          if [[ $i =~ -Jbuild.id=(.+) ]]; then
+            export build_id=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -Jlg.id=(.+) ]]; then
+            export lg_id=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -Jusers=(.+) ]]; then
+            export users=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -JVUSERS=(.+) ]]; then
+            export users=${BASH_REMATCH[1]}
+          fi
+    done
 
 if [[ ${args} == *"-Jinflux.host"* || ${args} == *"-Jinflux.port"* || ${args} == *"-Jjmeter_db"* || ${args} == *"-Jcomparison_db"* ]]; then
 arr=(${args// / })
@@ -77,7 +109,7 @@ fi
 sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegraf/telegraf.conf
 sudo service telegraf restart
-DEFAULT_EXECUTION="/docker-java-home/bin/java"
+DEFAULT_EXECUTION="/usr/bin/java"
 JOLOKIA_AGENT="-javaagent:/opt/java/jolokia-jvm-1.6.0-agent.jar=config=/opt/jolokia.conf"
 
 if [[ "${influx_host}" ]]; then
@@ -99,6 +131,7 @@ args="${args} -Jcomparison_db=${comparison_db}"
 fi
 fi
 set -e
+
 export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
 
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
@@ -107,18 +140,27 @@ echo "START Running Jmeter on `date`"
 echo "JVM_ARGS=${JVM_ARGS}"
 echo "jmeter args=${args}"
 echo "start_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
+start_time=$(date +%s)000
 cd "jmeter/apache-jmeter-5.0/bin/"
 "$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
 cd "/"
 echo "end_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
+end_time=$(date +%s)000
 
 python ./remove_listeners.py ${args// /%}
+
+if [[ -z "${build_id}" ]]; then
+export _build_id=""
+else
+export _build_id="-b ${build_id}"
+fi
+
 echo "Tests are done"
 echo "Generating metrics for comparison table ..."
-python ./compare_build_metrix.py ${args// /%}
-if [[ "${report_portal}" != "{}" || "${jira}" != "{}" ]]; then
+python ./compare_build_metrix.py -t $test_type -l ${lg_id} ${_build_id} -s $test_name -u $users -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -cdb ${comparison_db} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
+if [[ "${report_portal}" != "{}" || "${jira}" != "{}" || "${loki}" != "{}" ]]; then
 echo "Parsing errors ..."
-python ./error_parser.py ${args// /%}
+python ./logparser.py -t $test_type -s $test_name -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
 echo "END Running Jmeter on `date`"
 fi
 rm -f /mnt/jmeter/test_info.txt
