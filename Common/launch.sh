@@ -112,6 +112,7 @@ sudo service telegraf restart
 DEFAULT_EXECUTION="/usr/bin/java"
 JOLOKIA_AGENT="-javaagent:/opt/java/jolokia-jvm-1.6.0-agent.jar=config=/opt/jolokia.conf"
 
+if [[ "${influx_host}" ]]; then
 if [[ ${args} != *"-Jinflux.host"* ]]; then
 args="${args} -Jinflux.host=${influx_host}"
 fi
