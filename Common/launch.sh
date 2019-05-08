@@ -135,12 +135,10 @@ python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 echo "START Running Jmeter on `date`"
 echo "JVM_ARGS=${JVM_ARGS}"
 echo "jmeter args=${args}"
-echo "start_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
 start_time=$(date +%s)000
 cd "jmeter/apache-jmeter-5.0/bin/"
 "$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
 cd "/"
-echo "end_time=$(date +%s)000" >> /mnt/jmeter/test_info.txt
 end_time=$(date +%s)000
 
 python ./remove_listeners.py ${args// /%}
@@ -159,4 +157,3 @@ echo "Parsing errors ..."
 python ./logparser.py -t $test_type -s $test_name -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
 echo "END Running Jmeter on `date`"
 fi
-rm -f /mnt/jmeter/test_info.txt
