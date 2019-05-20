@@ -50,8 +50,8 @@ if [[ -z "${test_type}" ]]; then
 export test_type="test"
 fi
 
-if [[ ${args} == *"-Jtest_name="* ]]; then
 arr=(${args// / })
+if [[ ${args} == *"-Jtest_name="* ]]; then
 for i in "${arr[@]}"; do
           if [[ $i =~ -Jtest_name=(.+) ]]; then
             export test_name=${BASH_REMATCH[1]}

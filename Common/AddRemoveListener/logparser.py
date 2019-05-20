@@ -7,6 +7,7 @@ from difflib import SequenceMatcher
 
 import traceback
 from time import time
+import datetime
 import sys
 import warnings
 import requests
@@ -47,7 +48,8 @@ class SimulationLogParser(object):
         simulation = self.args['simulation']
         path = self.args['file']
         unparsed_counter = 0
-        errors = {}
+        aggregated_errors = {}
+        errors = []
         with open(path, 'r+', encoding="utf-8") as tsv:
             for entry in csv.DictReader(tsv, delimiter="\t", fieldnames=FIELDNAMES, restval="not_found"):
                 if len(entry) >= 8 and (entry['status'] == "KO"):
@@ -55,23 +57,31 @@ class SimulationLogParser(object):
                         data = self.parse_entry(entry)
                         data['simulation'] = simulation
                         data["request_params"] = self.remove_session_id(data["request_params"])
+                        request_start = datetime.datetime.utcfromtimestamp(int(data['request_start']) / 1000000000) \
+                                                .strftime('%Y-%m-%d %H:%M:%S')
+                        errors.append({"Request name": data['request_name'], "Method": data['request_method'],
+                                       "Request headers": data["headers"], 'Time': request_start,
+                                       "Response code": data['response_code'], "Error code": data['error_code'],
+                                       "Request URL": data['request_url'],
+                                       "Request_params": data['request_params'], "Response": data['response'],
+                                       "Error_message": data['error_message']})
                         count = 1
                         key = "%s_%s_%s" % (data['request_name'], data['request_method'], data['response_code'])
-                        if key not in errors:
-                            errors[key] = {"Request name": data['request_name'], "Method": data['request_method'],
+                        if key not in aggregated_errors:
+                            aggregated_errors[key] = {"Request name": data['request_name'], "Method": data['request_method'],
                                            "Request headers": data["headers"], 'Error count': count,
                                            "Response code": data['response_code'], "Error code": data['error_code'],
                                            "Request URL": data['request_url'],
                                            "Request_params": [data['request_params']], "Response": [data['response']],
                                            "Error_message": [data['error_message']]}
                         else:
-                            errors[key]['Error count'] += 1
+                            aggregated_errors[key]['Error count'] += 1
                             for field in ERROR_FIELDS:
-                                same = self.check_dublicate(errors[key], data, field)
+                                same = self.check_dublicate(aggregated_errors[key], data, field)
                                 if same is True:
                                     break
                                 else:
-                                    errors[key][field].append(data[field.lower()])
+                                    aggregated_errors[key][field].append(data[field.lower()])
                     except Exception as e:
                         print(e)
                         unparsed_counter += 1
@@ -79,7 +89,7 @@ class SimulationLogParser(object):
 
         if unparsed_counter > 0:
             print("Unparsed errors: %d" % unparsed_counter)
-        return errors
+        return aggregated_errors, errors
 
     def check_dublicate(self, entry, data, field):
         for params in entry[field]:
@@ -476,7 +486,7 @@ def get_args():
     return vars(parser.parse_args())
 
 
-def report_errors(errors, args):
+def report_errors(aggregated_errors, errors, args):
     report_types = []
     with open(PATH_TO_CONFIG, "rb") as f:
         config = yaml.load(f.read())
@@ -495,17 +505,17 @@ def report_errors(errors, args):
                 url=loki_url,
                 tags={"Test": args['simulation']},
             )
-            error_message = "Error key: {};; Error count: {};; Request name: {};; Method: {};; Response code: {};;" \
+            error_message = "UTC Time: {};; Request name: {};; Method: {};; Response code: {};;" \
                             " URL: {};; Error message: {};; Request params: {};; Headers: {};; Response body: {};;"
             logger = logging.getLogger("error-logger")
             logger.addHandler(handler)
             for error in errors:
                 logger.error(
-                    error_message.format(error, str(errors[error]['Error count']), str(errors[error]['Request name']),
-                                         str(errors[error]['Method']), str(errors[error]['Response code']),
-                                         str(errors[error]['Request URL']), str(errors[error]['Error_message']),
-                                         str(errors[error]['Request_params']), str(errors[error]['Request headers']),
-                                         str(errors[error]['Response'])),
+                    error_message.format(str(error['Time']), str(error['Request name']),
+                                         str(error['Method']), str(error['Response code']),
+                                         str(error['Request URL']), str(error['Error_message']),
+                                         str(error['Request_params']), str(error['Request headers']),
+                                         str(error['Response'])),
                 )
     rp_service = None
     if report_types.__contains__('reportportal'):
@@ -517,7 +527,7 @@ def report_errors(errors, args):
             print("ReportPortal configuration values missing, proceeding "
                   "without report portal integration ")
         else:
-            rp_service = ReportPortal(errors, args, rp_url, rp_token, rp_project, rp_launch_name)
+            rp_service = ReportPortal(aggregated_errors, args, rp_url, rp_token, rp_project, rp_launch_name)
     if rp_service:
         rp_service.my_error_handler(sys.exc_info())
         rp_service.report_errors()
@@ -542,10 +552,10 @@ def report_errors(errors, args):
     if jira_service:
         jira_service.connect()
         if jira_service.valid:
-            for error in errors:
-                issue_hash = get_hash_code(errors[error], args)
-                description = create_description(errors[error], args)
-                jira_service.create_issue(errors[error]['Request name'], 'Major', description, issue_hash)
+            for error in aggregated_errors:
+                issue_hash = get_hash_code(aggregated_errors[error], args)
+                description = create_description(aggregated_errors[error], args)
+                jira_service.create_issue(aggregated_errors[error]['Request name'], 'Major', description, issue_hash)
         else:
             print("Failed connection to Jira or project does not exist")
 
@@ -554,5 +564,5 @@ if __name__ == '__main__':
     print("Parsing simulation log")
     args = get_args()
     logParser = SimulationLogParser(args)
-    errors = logParser.parse_log()
-    report_errors(errors, args)
+    aggregated_errors, errors = logParser.parse_log()
+    report_errors(aggregated_errors, errors, args)
