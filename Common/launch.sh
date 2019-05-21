@@ -16,16 +16,25 @@ echo "Extracting InfluxDB configuration from property file - $property_file"
 while IFS= read -r param
 do
           if [[ $param =~ influx.host=(.+) ]]; then
-            influx_host=${BASH_REMATCH[1]}
+            export influx_host=${BASH_REMATCH[1]}
           fi
           if [[ $param =~ influx.port=(.+) ]]; then
-            influx_port=${BASH_REMATCH[1]}
+            export influx_port=${BASH_REMATCH[1]}
           fi
           if [[ $param =~ influx.db=(.+) ]]; then
-            jmeter_db=${BASH_REMATCH[1]}
+            export jmeter_db=${BASH_REMATCH[1]}
           fi
           if [[ $param =~ comparison_db=(.+) ]]; then
-            comparison_db=${BASH_REMATCH[1]}
+            export comparison_db=${BASH_REMATCH[1]}
+          fi
+          if [[ $param =~ test.type=(.+) ]]; then
+            export test_type=${BASH_REMATCH[1]}
+          fi
+          if [[ $param =~ test_name=(.+) ]]; then
+            export test_name=${BASH_REMATCH[1]}
+          fi
+          if [[ $param =~ VUSERS=(.+) ]]; then
+            export users=${BASH_REMATCH[1]}
           fi
 done < "$property_file"
 fi
@@ -46,19 +55,23 @@ export report_portal="{}"
 export loki="{}"
 fi
 
-if [[ -z "${test_type}" ]]; then
-export test_type="test"
+arr=(${args// / })
+
+if [[ ${args} == *"-Jtest.type="* ]]; then
+for i in "${arr[@]}"; do
+          if [[ $i =~ -Jtest.type=(.+) ]]; then
+            export test_type=${BASH_REMATCH[1]}
+          fi
+    done
 fi
 
-arr=(${args// / })
+
 if [[ ${args} == *"-Jtest_name="* ]]; then
 for i in "${arr[@]}"; do
           if [[ $i =~ -Jtest_name=(.+) ]]; then
             export test_name=${BASH_REMATCH[1]}
           fi
     done
-else
-export test_name="test"
 fi
 
 for i in "${arr[@]}"; do
@@ -104,6 +117,14 @@ fi
 
 if [[ -z "${comparison_db}" ]]; then
 comparison_db="comparison"
+fi
+
+if [[ -z "${test_name}" ]]; then
+export test_name="test"
+fi
+
+if [[ -z "${test_type}" ]]; then
+export test_type="test"
 fi
 
 sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
