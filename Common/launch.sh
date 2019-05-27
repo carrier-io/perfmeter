@@ -149,7 +149,10 @@ fi
 fi
 set -e
 
-export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
+if [[ -z "${JVM_ARGS}" ]]; then
+  export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
+fi
+echo "Using ${JVM_ARGS} as JVM Args"
 
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
