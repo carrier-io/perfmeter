@@ -27,7 +27,7 @@ docker run --rm -u 0:0 \
        getcarrier/perfmeter:latest \
        -n -t /mnt/jmeter/<test_name> 
        -q /mnt/jmeter/<properties_file> \    #optional
-       -j /tmp/reports/jmeter_$(date +%s).log \   #optional
+       -j /tmp/reports/jmeter_$(date +%s).log \  #optional
        -l /tmp/reports/jmeter_$(date +%s).jtl -e \  # optional
        -o /tmp/reports/HtmlReport_$(date +%s)/    #optional
 ```
