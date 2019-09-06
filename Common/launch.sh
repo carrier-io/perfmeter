@@ -80,6 +80,8 @@ for i in "${arr[@]}"; do
           fi
           if [[ $i =~ -Jlg.id=(.+) ]]; then
             export lg_id=${BASH_REMATCH[1]}
+          else
+            export lg_id="Lg_"$RANDOM"_"$RANDOM
           fi
           if [[ $i =~ -Jusers=(.+) ]]; then
             export users=${BASH_REMATCH[1]}
@@ -147,6 +149,9 @@ if [[ ${args} != *"-Jcomparison_db"* ]]; then
 args="${args} -Jcomparison_db=${comparison_db}"
 fi
 fi
+if [[ ${args} != *"-Jlg.id"* ]]; then
+args="${args} -Jlg.id=${lg_id}"
+fi
 set -e
 
 export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
@@ -165,16 +170,18 @@ end_time=$(date +%s)000
 python ./remove_listeners.py ${args// /%}
 
 if [[ -z "${build_id}" ]]; then
-export _build_id=""
+export build_id=${test_name}"_"${test_type}"_"$RANDOM
+fi
+
+if [[ -z "${redis_connection}" ]]; then
+export _redis_connection=""
 else
-export _build_id="-b ${build_id}"
+export _redis_connection="-r ${redis_connection}"
 fi
 
 echo "Tests are done"
 echo "Generating metrics for comparison table ..."
-python ./compare_build_metrix.py -t $test_type -l ${lg_id} ${_build_id} -s $test_name -u $users -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -cdb ${comparison_db} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
-if [[ "${report_portal}" != "{}" || "${jira}" != "{}" || "${loki}" != "{}" ]]; then
+python ./compare_build_metrix.py -t $test_type -l ${lg_id} -b ${build_id} -s $test_name -u $users -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -cdb ${comparison_db} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
 echo "Parsing errors ..."
-python ./logparser.py -t $test_type -s $test_name -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
+python ./post_processor.py -t $test_type -s $test_name -st ${start_time} -et ${end_time} -b ${build_id} -u $users -i ${influx_host} ${_redis_connection} -l ${lg_id} -p ${influx_port} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
 echo "END Running Jmeter on `date`"
-fi

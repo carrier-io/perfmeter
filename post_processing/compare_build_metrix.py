@@ -26,14 +26,8 @@ class SimulationLogParser(object):
         user_count = 0 if self.args['users'] is None else self.args['users']
         if self.args['build_id']:
             build_id = self.args['build_id']
-        else:
-            date = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
-            build_id = "{}_{}_{}".format(self.args['type'], user_count, date)
-        if int(self.args['lg_id']) != 1:
+        if self.args['lg_id']:
             lg_id = args['lg_id']
-        else:
-            date = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ')
-            lg_id = "LG_{}".format(date)
         with open(path, 'r+', encoding="utf-8") as tsv:
             for entry in csv.DictReader(tsv, delimiter="\t", fieldnames=FIELDNAMES, restval="not_found"):
                 if entry['action'] == "REQUEST":

@@ -26,9 +26,11 @@ RUN add-apt-repository ppa:jonathonf/python-3.6 && apt-get update && \
     python -m pip install --upgrade pip && \
     apt-get clean && \
     python -m pip install setuptools==40.6.2 && \
-    python -m pip install /tmp/rp_client_3.2.zip 'common==0.1.2' 'configobj==5.0.6' 'numpy==1.16.0' 'PyYAML==3.13' \
-    'jira==2.0.0' 'influxdb==5.2.0' 'argparse==1.4.0' 'requests==2.19.1' 'python-logging-loki==0.1.0' && \
+    python -m pip install 'common==0.1.2' 'configobj==5.0.6' 'numpy==1.16.0' \
+     'redis==3.2.0' 'influxdb==5.2.0' 'argparse==1.4.0'  && \
     rm -rf /tmp/*
+
+RUN python -m pip install git+https://github.com/hunkom/perfreporter.git
 
 # Creating carrier user and making him sudoer
 RUN groupadd -g $GID $UNAME
@@ -64,6 +66,7 @@ ENV PATH $JMETER_HOME/bin:$PATH
 
 # Copy all necessary files to container image
 COPY Common/launch.sh /
+COPY post_processing/ /
 RUN sudo chmod +x /launch.sh
 COPY Common/AddRemoveListener/ /
 COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
