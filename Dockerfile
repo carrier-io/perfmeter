@@ -28,7 +28,7 @@ RUN add-apt-repository ppa:jonathonf/python-3.6 && apt-get update && \
      'redis==3.2.0' 'influxdb==5.2.0' 'argparse==1.4.0'  && \
     rm -rf /tmp/*
 
-RUN python -m pip install git+https://github.com/hunkom/perfreporter.git
+RUN python -m pip install git+https://github.com/carrier-io/perfreporter.git
 
 # Creating carrier user and making him sudoer
 RUN groupadd -g $GID $UNAME
