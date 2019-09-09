@@ -2,14 +2,10 @@ from influxdb import InfluxDBClient
 import statistics
 
 
-SELECT_LAST_BUILDS_ID = "select distinct(id) from (select build_id as id, pct95 from api_comparison where " \
-                        "simulation=\'{}\' and test_type=\'{}\' and \"users\"=\'{}\' and build_id!~/baseline_id_{}/ " \
-                        "order by time DESC) GROUP BY time(1s) order by DESC limit {}"
+SELECT_TEST_DATA = "select * from api_comparison where build_id=\'{}\' and lg_id=\'{}\'"
 
 SELECT_BASELINE_BUILD_ID = "select last(pct95), build_id from api_comparison where simulation=\'{}\' and " \
                            "test_type=\'{}\' and \"users\"=\'{}\' and build_id=~/baseline_id_/"
-
-SELECT_TEST_DATA = "select * from api_comparison where build_id=\'{}\' and lg_id=\'{}\'"
 
 SELECT_BASELINE_DATA = "select * from api_comparison where build_id=\'{}\'"
 
@@ -52,15 +48,8 @@ class DataManager:
     def get_last_build(self):
         if self.last_build_data:
             return self.last_build_data
-        build_ids = []
         self.client.switch_database(self.args['influx_comparison_database'])
-        last_builds = self.client.query(SELECT_LAST_BUILDS_ID.format(self.args['simulation'], self.args['type'],
-                                                                     str(self.args['users']), self.args['build_id'],
-                                                                     self.args['test_limit']))
-        for test in list(last_builds.get_points()):
-            if test['distinct'] not in build_ids:
-                build_ids.append(test['distinct'])
-        test_data = self.client.query(SELECT_TEST_DATA.format(build_ids[0], self.args['lg_id']))
+        test_data = self.client.query(SELECT_TEST_DATA.format(self.args['build_id'], self.args['lg_id']))
         self.last_build_data = list(test_data.get_points())
         return self.last_build_data
 

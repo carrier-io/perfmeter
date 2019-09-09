@@ -24,10 +24,8 @@ class SimulationLogParser(object):
         reqs = dict()
         timestamp = time()
         user_count = 0 if self.args['users'] is None else self.args['users']
-        if self.args['build_id']:
-            build_id = self.args['build_id']
-        if self.args['lg_id']:
-            lg_id = args['lg_id']
+        build_id = self.args['build_id']
+        lg_id = self.args['lg_id']
         with open(path, 'r+', encoding="utf-8") as tsv:
             for entry in csv.DictReader(tsv, delimiter="\t", fieldnames=FIELDNAMES, restval="not_found"):
                 if entry['action'] == "REQUEST":

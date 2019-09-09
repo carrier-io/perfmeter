@@ -15,8 +15,6 @@ ARG UNAME=carrier
 ARG UID=1001
 ARG GID=1001
 
-COPY rp_client_3.2.zip /tmp
-
 # Install utilities
 RUN add-apt-repository ppa:jonathonf/python-3.6 && apt-get update && \
     apt-get install -y --no-install-recommends bash sudo unzip git wget python3.6 python3.6-dev && \
@@ -65,8 +63,8 @@ ENV JMETER_HOME /jmeter/apache-jmeter-$JMETER_VERSION/
 ENV PATH $JMETER_HOME/bin:$PATH
 
 # Copy all necessary files to container image
-COPY Common/launch.sh /
 COPY post_processing/ /
+COPY launch.sh /
 RUN sudo chmod +x /launch.sh
 COPY Common/AddRemoveListener/ /
 COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
