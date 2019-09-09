@@ -18,7 +18,7 @@
 #  issue_type: Bug                                    # Jira issue type (Default: Bug)
 #  labels: Performance, perfmeter                     # Comaseparated list of lables for ticket
 #  watchers: another.dude                             # Comaseparated list of Jira IDs for watchers
-#  jira_epic_key: XYZC-123                            # Jira epic key (or id)  check_functional_errors: True
+#  jira_epic_key: XYZC-123                            # Jira epic key (or id)
 #  check_functional_errors: False                     # Perform analysis by functional error False or True (Default: False)
 #  check_performance_degradation: False               # Perform analysis compared to baseline False or True (Default: False)
 #  check_missed_thresholds: False                     # Perform analysis by exceeding thresholds False or True (Default: False)

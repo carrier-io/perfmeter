@@ -129,6 +129,10 @@ if [[ -z "${test_type}" ]]; then
 export test_type="test"
 fi
 
+if [[ -z "${build_id}" ]]; then
+export build_id=${test_name}"_"${test_type}"_"$RANDOM
+fi
+
 sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegraf/telegraf.conf
 sudo service telegraf restart
@@ -152,6 +156,9 @@ fi
 if [[ ${args} != *"-Jlg.id"* ]]; then
 args="${args} -Jlg.id=${lg_id}"
 fi
+if [[ ${args} != *"-Jbuild.id"* ]]; then
+args="${args} -Jbuild.id=${build_id}"
+fi
 set -e
 
 export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
@@ -168,10 +175,6 @@ cd "/"
 end_time=$(date +%s)000
 
 python ./remove_listeners.py ${args// /%}
-
-if [[ -z "${build_id}" ]]; then
-export build_id=${test_name}"_"${test_type}"_"$RANDOM
-fi
 
 if [[ -z "${redis_connection}" ]]; then
 export _redis_connection=""
