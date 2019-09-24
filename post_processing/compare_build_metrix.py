@@ -25,7 +25,6 @@ class SimulationLogParser(object):
         timestamp = time()
         user_count = 0 if self.args['users'] is None else self.args['users']
         build_id = self.args['build_id']
-        lg_id = self.args['lg_id']
         with open(path, 'r+', encoding="utf-8") as tsv:
             for entry in csv.DictReader(tsv, delimiter="\t", fieldnames=FIELDNAMES, restval="not_found"):
                 if entry['action'] == "REQUEST":
@@ -68,14 +67,14 @@ class SimulationLogParser(object):
                     "users": user_count,
                     "test_type": self.args["type"],
                     "build_id": build_id,
-                    "lg_id": lg_id,
                     "request_name": reqs[req]['request_name'],
                     "method": reqs[req]['method'],
                     "duration": int(self.args['end_time'])/1000 - int(self.args['start_time'])/1000
                 },
                 "time": datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%SZ'),
                 "fields": {
-                    "throughput": round(float(len(reqs[req]["times"])*1000)/float(int(self.args['end_time'])-int(self.args['start_time'])), 3),
+                    "throughput": round(float(len(reqs[req]["times"])*1000)/float(int(self.args['end_time']) -
+                                                                                  int(self.args['start_time'])), 3),
                     "total": len(reqs[req]["times"]),
                     "ok": reqs[req]["OK"],
                     "ko": reqs[req]["KO"],
@@ -98,7 +97,7 @@ class SimulationLogParser(object):
             points.append(influx_record)
         try:
             client = InfluxDBClient(self.args["influx_host"], self.args['influx_port'],
-                                username='', password='', database=self.args['comparison_db'])
+                                    username='', password='', database=self.args['comparison_db'])
             client.write_points(points)
             client.close()
         except Exception as e:

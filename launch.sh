@@ -161,12 +161,14 @@ args="${args} -Jbuild.id=${build_id}"
 fi
 set -e
 
-export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
+if [[ -z "${JVM_ARGS}" ]]; then
+  export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
+fi
+echo "Using ${JVM_ARGS} as JVM Args"
 
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
 echo "START Running Jmeter on `date`"
-echo "JVM_ARGS=${JVM_ARGS}"
 echo "jmeter args=${args}"
 start_time=$(date +%s)000
 cd "jmeter/apache-jmeter-5.0/bin/"
@@ -176,15 +178,14 @@ end_time=$(date +%s)000
 
 python ./remove_listeners.py ${args// /%}
 
+echo "Tests are done"
 if [[ -z "${redis_connection}" ]]; then
 export _redis_connection=""
+echo "Generating metrics for comparison table ..."
+python ./compare_build_metrix.py -t $test_type -l ${lg_id} -b ${build_id} -s $test_name -u $users -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -cdb ${comparison_db} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
 else
 export _redis_connection="-r ${redis_connection}"
 fi
 
-echo "Tests are done"
-echo "Generating metrics for comparison table ..."
-python ./compare_build_metrix.py -t $test_type -l ${lg_id} -b ${build_id} -s $test_name -u $users -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -cdb ${comparison_db} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
-echo "Parsing errors ..."
 python ./post_processor.py -t $test_type -s $test_name -st ${start_time} -et ${end_time} -b ${build_id} -u $users -i ${influx_host} ${_redis_connection} -l ${lg_id} -p ${influx_port} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
 echo "END Running Jmeter on `date`"

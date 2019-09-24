@@ -14,7 +14,7 @@ class SimulationLogParser(object):
     def __init__(self, arguments):
         self.args = arguments
 
-    def parse_log(self):
+    def parse_errors(self):
         """Parse line with error and send to database"""
         simulation = self.args['simulation']
         path = self.args['file']
@@ -63,10 +63,58 @@ class SimulationLogParser(object):
             print("Unparsed errors: %d" % unparsed_counter)
         return aggregated_errors, errors
 
-    def check_dublicate(self, entry, data, field):
+    def prepare_test_results_for_redis(self):
+        path = self.args['file']
+        reqs = dict()
+        user_count = 0 if self.args['users'] is None else int(self.args['users'])
+        with open(path, 'r+', encoding="utf-8") as tsv:
+            for entry in csv.DictReader(tsv, delimiter="\t", fieldnames=FIELDNAMES, restval="not_found"):
+                if entry['action'] == "REQUEST":
+                    try:
+                        data = self.parse_data(entry)
+                        key = '{} {}'.format(data["request_method"].upper(), data["request_name"])
+                        if key not in reqs:
+                            reqs[key] = {
+                                "total": 0,
+                                "KO": 0,
+                                "OK": 0,
+                                "1xx": 0,
+                                "2xx": 0,
+                                "3xx": 0,
+                                "4xx": 0,
+                                "5xx": 0,
+                                'NaN': 0,
+                                "method": data["request_method"].upper(),
+                                "request_name": data['request_name'],
+                                "users": user_count,
+                                "duration": int(self.args['end_time']) / 1000 - int(self.args['start_time']) / 1000,
+                                "simulation": self.args['simulation'],
+                                "test_type": self.args["type"],
+                                "build_id": self.args['build_id']
+                            }
+                        if "{}xx".format(str(data['response_code'])[0]) in reqs[key]:
+                            reqs[key]["{}xx".format(str(data['response_code'])[0])] += 1
+                        else:
+                            reqs[key]["NaN"] += 1
+                        reqs[key][data['status']] += 1
+                        reqs[key]['total'] += 1
+                    except:
+                        pass
+        return reqs
+
+    @staticmethod
+    def check_dublicate(entry, data, field):
         for params in entry[field]:
             if SequenceMatcher(None, str(data[field.lower()]), str(params)).ratio() > 0.7:
                 return True
+
+    def parse_data(self, values):
+        """Parse error entry"""
+        values['test_type'] = self.args['type']
+        values['response_time'] = int(values['request_end']) - int(values['request_start'])
+        values['response_code'] = self.extract_response_code(values['error'])
+        values['request_url'], _, values['request_method'] = self.parse_request(values['error'])
+        return values
 
     def parse_entry(self, values):
         """Parse error entry"""
