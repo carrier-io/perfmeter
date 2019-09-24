@@ -87,11 +87,11 @@ class SimulationLogParser(object):
                     "min": round(np_arr.min(), 2),
                     "max": round(np_arr.max(), 2),
                     "mean": round(np_arr.mean(), 2),
-                    "pct50": int(np.percentile(np_arr, 50, interpolation="higher")),
-                    "pct75": int(np.percentile(np_arr, 75, interpolation="higher")),
-                    "pct90": int(np.percentile(np_arr, 90, interpolation="higher")),
-                    "pct95": int(np.percentile(np_arr, 95, interpolation="higher")),
-                    "pct99": int(np.percentile(np_arr, 99, interpolation="higher"))
+                    "pct50": int(np.percentile(np_arr, 50, interpolation="linear")),
+                    "pct75": int(np.percentile(np_arr, 75, interpolation="linear")),
+                    "pct90": int(np.percentile(np_arr, 90, interpolation="linear")),
+                    "pct95": int(np.percentile(np_arr, 95, interpolation="linear")),
+                    "pct99": int(np.percentile(np_arr, 99, interpolation="linear"))
                 }
             }
             points.append(influx_record)
