@@ -1,3 +1,12 @@
+FROM golang:1.13 as build
+
+RUN apt-get update && apt-get install -qy libsystemd-dev git
+
+WORKDIR /src
+RUN git clone https://github.com/grafana/loki.git
+WORKDIR /src/loki
+RUN make clean && make BUILD_IN_CONTAINER=false promtail
+
 FROM ubuntu:16.04
 
 RUN apt-get update \
@@ -15,8 +24,6 @@ ARG UNAME=carrier
 ARG UID=1001
 ARG GID=1001
 
-COPY rp_client_3.2.zip /tmp
-
 # Install utilities
 RUN add-apt-repository ppa:jonathonf/python-3.6 && apt-get update && \
     apt-get install -y --no-install-recommends bash sudo unzip git wget python3.6 python3.6-dev && \
@@ -26,9 +33,10 @@ RUN add-apt-repository ppa:jonathonf/python-3.6 && apt-get update && \
     python -m pip install --upgrade pip && \
     apt-get clean && \
     python -m pip install setuptools==40.6.2 && \
-    python -m pip install /tmp/rp_client_3.2.zip 'common==0.1.2' 'configobj==5.0.6' 'numpy==1.16.0' 'PyYAML==3.13' \
-    'jira==2.0.0' 'influxdb==5.2.0' 'argparse==1.4.0' 'requests==2.19.1' 'python-logging-loki==0.1.0' && \
+    python -m pip install 'common==0.1.2' 'configobj==5.0.6' 'redis==3.2.0' 'argparse==1.4.0'  && \
     rm -rf /tmp/*
+
+RUN pip install git+https://github.com/carrier-io/perfreporter.git
 
 # Creating carrier user and making him sudoer
 RUN groupadd -g $GID $UNAME
@@ -45,6 +53,13 @@ RUN cd /tmp && wget https://dl.influxdata.com/telegraf/releases/telegraf_1.8.3-1
     dpkg -i telegraf_1.8.3-1_amd64.deb
 COPY telegraf.conf /etc/telegraf/telegraf.conf
 COPY jolokia.conf /opt
+
+RUN apt-get update && \
+  apt-get install -qy \
+  tzdata ca-certificates libsystemd-dev && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+COPY --from=build /src/loki/cmd/promtail/promtail /usr/bin/promtail
+COPY promtail-docker-config.yaml /etc/promtail/docker-config.yaml
 
 # Install JMeter
 RUN mkdir /jmeter
@@ -63,7 +78,8 @@ ENV JMETER_HOME /jmeter/apache-jmeter-$JMETER_VERSION/
 ENV PATH $JMETER_HOME/bin:$PATH
 
 # Copy all necessary files to container image
-COPY Common/launch.sh /
+COPY post_processing/ /
+COPY launch.sh /
 RUN sudo chmod +x /launch.sh
 COPY Common/AddRemoveListener/ /
 COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib

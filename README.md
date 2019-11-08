@@ -1,36 +1,46 @@
-# perfmeter
-*Carrier customized jMeter container*
+# Introduction
+*Carrier customized JMeter container*
 
-### Quick and easy start
+
+### Docker tags and versioning
+
+getcarrier/perfmeter:1.0 - Carrier Perfmeter release version 1.0
+    
+getcarrier/perfmeter:latest - bleeding edge, not recommended for production
+
+
+### Quick start
 These simple steps will run jMeter test against your application and generate html and jtl report.
 
 ##### 1. Install docker
 
-##### 2. Start container and pass the necessary config options to container and mount reports folder:
-`your_local_path_to_reports` - path on your local filesystem where you want to store reports from this 
-
-`your_local_path_to_tests` - path on your local filesystem where you store jMeter tests
-
-`test_name` - name of the jMeter test file that will be run
-
-`properties_file` - properties file name
-
-`your_local_path_to_config/config.yaml` - config.yaml file with InfluxDB, Jira and Report Portal parameters (described below)
-
-For example:
+##### 2. Start container and pass the necessary config options to container:
+Example docker invocation:
 
 ``` 
 docker run --rm -u 0:0 \
        -v <your_local_path_to_tests>:/mnt/jmeter/ \
        -v <your_local_path_to_config/config.yaml>:/tmp/ #optional
-       -v <your_local_path_to_reports>:/tmp/reports \   #optional
-       getcarrier/perfmeter:latest \
+       -v <your_local_path_ to_reports>:/tmp/reports \   #optional
+       getcarrier/perfmeter:1.0 \
        -n -t /mnt/jmeter/<test_name> 
        -q /mnt/jmeter/<properties_file> \    #optional
        -j /tmp/reports/jmeter_$(date +%s).log \   #optional
        -l /tmp/reports/jmeter_$(date +%s).jtl -e \  # optional
        -o /tmp/reports/HtmlReport_$(date +%s)/    #optional
 ```
+
+`your_local_path_to_reports` - path on your local filesystem where you want to store reports from this run
+
+`your_local_path_to_tests` - path on your local filesystem where you store jMeter tests
+
+`test_name` - name of the JMeter test file that will be run
+
+`properties_file` - properties file name (described below)
+
+`your_local_path_to_config/config.yaml` - config.yaml file with InfluxDB, Jira, Loki and Report Portal parameters (described below)
+
+
 
 ##### 3. Open test report
 Report is located in your `your_local_path_to_reports` folder
@@ -61,9 +71,11 @@ You can also pass parameters from the command line with the -J option. For examp
 ... -t /mnt/jmeter/<test_name> -JVUSERS=1 -JRAMP_UP=1 ...
 ```
 
-Reporting can be configured using config.yaml file.
+Error reporting can be configured using config.yaml file.
 
-You have to uncomment the necessary configuration section and pass parameters to use it in your test
+You can send aggregated errors to Report Portal or Jira. You can also send error info to Loki.
+
+To do this, you need to uncomment the necessary configuration section and pass parameters.
 
 **config.yaml** file example:
 ```
@@ -88,4 +100,58 @@ You have to uncomment the necessary configuration section and pass parameters to
 #  port: 8086                                         # Influx port (Default: 8086)
 #  jmeter_db: jmeter                                  # Database name for jmeter test results (Default: jmeter)
 #  comparison_db: comparison                          # Database name for comparison builds (Default: comparison)
+#loki:
+#  host: http://loki                                  # Loki host DNS or IP
+#  port: 3100                                         # Loki port
 ```
+
+
+
+### Jenkins pipeline
+
+Carrier Perfmeter can be started inside Jenkins CI/CD pipeline.
+
+Here is an example pipeline that will run demo test.
+
+```
+def get_influx_host(String env_var) {
+    def match = env_var =~ 'http://(.+)/jenkins'
+    return match[0][1]
+}
+
+node{
+    stage("configure") {
+        deleteDir()
+        sh "mkdir reports"
+    }
+    stage("run tests") {
+        def dockerParamsString = "--entrypoint=''"
+        def params = [
+            "-t"
+        ]
+        for (param in params) {
+            dockerParamsString += " ${param}"
+        }
+        docker.image("getcarrier/perfmeter:1.0").inside(dockerParamsString){
+            sh "mkdir /tmp/reports"
+            sh "pwd"
+            sh """cd / && ls -la &&  /launch.sh  -n -t /mnt/jmeter/FloodIO.jmx \\
+                  -j /tmp/reports/jmeter_${JOB_NAME}_${BUILD_ID}.log \\
+                  -l /tmp/reports/jmeter_${JOB_NAME}_${BUILD_ID}.jtl \\
+                  -e -o /tmp/reports/HtmlReport_${JOB_NAME}_${BUILD_ID} \\
+                  -Jinflux.host="""+get_influx_host(env.JENKINS_URL)+""" \\
+                  -JVUSERS=10 -JDURATION=120 -Jinflux.db=jmeter -Jinflux.port=8086 \\
+                  -JRAMP_UP=1 -Jtest_name=test -Jbuild.id=flood_io_${JOB_NAME}_${BUILD_ID} \\
+                  -Jproject.id=demo -Jtest.type=demo -Jenv.type=demo"""
+            sh "mv /tmp/reports/* ${WORKSPACE}/reports/"
+        }
+    }
+    stage("publish results") {
+        perfReport 'reports/*.jtl'
+    }
+}
+```
+
+In order to run your tests you need to copy your tests or clone your repository with the tests in the Jenkins workspace.
+
+Then in the container launch command you need to specify the path to your tests (/launch.sh -n -t ${WORKSPACE}/<path_to_test>).

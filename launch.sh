@@ -33,26 +33,26 @@ do
           if [[ $param =~ test_name=(.+) ]]; then
             export test_name=${BASH_REMATCH[1]}
           fi
-          if [[ $param =~ VUSERS=(.+) ]]; then
-            export users=${BASH_REMATCH[1]}
-          fi
+
 done < "$property_file"
 fi
 
+if [[ -z "${config_yaml}" ]]; then
 export config=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()); print(y)")
+else
+$(python -c "import json; import os; f = open('/tmp/config.yaml', 'w'); f.write(json.loads(os.environ['config_yaml']))")
+export config=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()); print(y)")
+fi
 if [[ "${config}" != "None" ]]; then
 echo "Extracting InfluxDB configuration from config.yaml"
 export influx_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('host'))")
 export influx_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('port', ''))")
-export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('jmeter_db', ''))")
+export influx_user=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('user',''))")
+export influx_password=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('password',''))")
+export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('influx_db', 'jmeter'))")
 export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('comparison_db', ''))")
-export report_portal=$(python -c "import yaml; print(yaml.load(open('/tmp/config.yaml').read()).get('reportportal',{}))")
-export jira=$(python -c "import yaml; print(yaml.load(open('/tmp/config.yaml').read()).get('jira',{}))")
-export loki=$(python -c "import yaml; print(yaml.load(open('/tmp/config.yaml').read()).get('loki',{}))")
-else
-export jira="{}"
-export report_portal="{}"
-export loki="{}"
+export loki_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('host'))")
+export loki_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('port'))")
 fi
 
 arr=(${args// / })
@@ -61,6 +61,14 @@ if [[ ${args} == *"-Jtest.type="* ]]; then
 for i in "${arr[@]}"; do
           if [[ $i =~ -Jtest.type=(.+) ]]; then
             export test_type=${BASH_REMATCH[1]}
+          fi
+    done
+fi
+
+if [[ ${args} == *"-Jenv.type="* ]]; then
+for i in "${arr[@]}"; do
+          if [[ $i =~ -Jenv.type=(.+) ]]; then
+            export env=${BASH_REMATCH[1]}
           fi
     done
 fi
@@ -80,12 +88,8 @@ for i in "${arr[@]}"; do
           fi
           if [[ $i =~ -Jlg.id=(.+) ]]; then
             export lg_id=${BASH_REMATCH[1]}
-          fi
-          if [[ $i =~ -Jusers=(.+) ]]; then
-            export users=${BASH_REMATCH[1]}
-          fi
-          if [[ $i =~ -JVUSERS=(.+) ]]; then
-            export users=${BASH_REMATCH[1]}
+          else
+            export lg_id="Lg_"$RANDOM"_"$RANDOM
           fi
     done
 
@@ -124,12 +128,28 @@ export test_name="test"
 fi
 
 if [[ -z "${test_type}" ]]; then
-export test_type="test"
+export test_type="demo"
 fi
 
-sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
+if [[ -z "${env}" ]]; then
+export env="demo"
+fi
+
+if [[ -z "${build_id}" ]]; then
+export build_id=${test_name}"_"${test_type}"_"$RANDOM
+fi
+
+if [[ "${loki_host}" ]]; then
+/usr/bin/promtail --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id} -config.file=/etc/promtail/docker-config.yaml &
+fi
+
+if [[ "${influx_host}" ]]; then
+sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${test_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegraf/telegraf.conf
+sudo sed -i "s/INFLUX_USER/${influx_user}/g" /etc/telegraf/telegraf.conf
+sudo sed -i "s/INFLUX_PASSWORD/${influx_password}/g" /etc/telegraf/telegraf.conf
 sudo service telegraf restart
+fi
 DEFAULT_EXECUTION="/usr/bin/java"
 JOLOKIA_AGENT="-javaagent:/opt/java/jolokia-jvm-1.6.0-agent.jar=config=/opt/jolokia.conf"
 
@@ -147,6 +167,12 @@ if [[ ${args} != *"-Jcomparison_db"* ]]; then
 args="${args} -Jcomparison_db=${comparison_db}"
 fi
 fi
+if [[ ${args} != *"-Jlg.id"* ]]; then
+args="${args} -Jlg.id=${lg_id}"
+fi
+if [[ ${args} != *"-Jbuild.id"* ]]; then
+args="${args} -Jbuild.id=${build_id}"
+fi
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then
@@ -157,7 +183,6 @@ echo "Using ${JVM_ARGS} as JVM Args"
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
 echo "START Running Jmeter on `date`"
-echo "JVM_ARGS=${JVM_ARGS}"
 echo "jmeter args=${args}"
 start_time=$(date +%s)000
 cd "jmeter/apache-jmeter-5.0/bin/"
@@ -167,17 +192,30 @@ end_time=$(date +%s)000
 
 python ./remove_listeners.py ${args// /%}
 
-if [[ -z "${build_id}" ]]; then
-export _build_id=""
+echo "Tests are done"
+if [[ -z "${redis_connection}" ]]; then
+export _redis_connection=""
 else
-export _build_id="-b ${build_id}"
+export _redis_connection="-r ${redis_connection}"
 fi
 
-echo "Tests are done"
-echo "Generating metrics for comparison table ..."
-python ./compare_build_metrix.py -t $test_type -l ${lg_id} ${_build_id} -s $test_name -u $users -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -cdb ${comparison_db} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
-if [[ "${report_portal}" != "{}" || "${jira}" != "{}" || "${loki}" != "{}" ]]; then
-echo "Parsing errors ..."
-python ./logparser.py -t $test_type -s $test_name -st ${start_time} -et ${end_time} -i ${influx_host} -p ${influx_port} -f "/jmeter/apache-jmeter-5.0/bin/simulation.log"
-echo "END Running Jmeter on `date`"
+if [[ -z "${influx_user}" ]]; then
+export _influx_user=""
+else
+export _influx_user="-iu ${influx_user}"
 fi
+
+if [[ -z "${influx_password}" ]]; then
+export _influx_password=""
+else
+export _influx_password="-ip ${influx_password}"
+fi
+
+if [[ "${influx_host}" ]]; then
+export _influx_host="-i ${influx_host}"
+else
+export _influx_host=""
+fi
+
+python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_redis_connection} ${_influx_user} ${_influx_password}
+echo "END Running Jmeter on `date`"
