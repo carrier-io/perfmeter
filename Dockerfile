@@ -79,6 +79,7 @@ ENV PATH $JMETER_HOME/bin:$PATH
 
 # Copy all necessary files to container image
 COPY post_processing/ /
+COPY pre_processing/ /
 COPY launch.sh /
 RUN sudo chmod +x /launch.sh
 COPY Common/AddRemoveListener/ /
@@ -86,6 +87,7 @@ COPY Common/lib/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
 COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSION/lib/ext
 COPY Tests /mnt/jmeter
 COPY config.yaml /tmp/
+COPY reports /tmp/reports/
 
 # Application to run on starting the container
 ENTRYPOINT ["/launch.sh"]

@@ -51,8 +51,17 @@ export influx_user=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yam
 export influx_password=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('password',''))")
 export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('influx_db', 'jmeter'))")
 export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('comparison_db', ''))")
-export loki_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('host'))")
+export loki_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('host', 'None'))")
 export loki_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('port'))")
+if [[ -z "${galloper_url}" ]]; then
+export galloper_url=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('galloper_url'))")
+fi
+if [[ -z "${bucket}" ]]; then
+export bucket=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('bucket'))")
+fi
+if [[ -z "${test}" ]]; then
+export test=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('test'))")
+fi
 fi
 
 arr=(${args// / })
@@ -139,7 +148,7 @@ if [[ -z "${build_id}" ]]; then
 export build_id=${test_name}"_"${test_type}"_"$RANDOM
 fi
 
-if [[ "${loki_host}" ]]; then
+if [[ "${loki_host}" != "None" ]]; then
 /usr/bin/promtail --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id} -config.file=/etc/promtail/docker-config.yaml &
 fi
 
@@ -179,6 +188,8 @@ if [[ -z "${JVM_ARGS}" ]]; then
   export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
 fi
 echo "Using ${JVM_ARGS} as JVM Args"
+export tests_path=/mnt/jmeter
+python minio_reader.py
 
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
