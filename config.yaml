@@ -32,3 +32,7 @@
 #loki:
 #  host: http://loki                                  # Loki host DNS or IP
 #  port: 3100                                         # Loki port
+#minio:
+#  galloper_url: http://galloper:5000                 # Url to Galloper
+#  bucket: perfmeter                                  # Bucket's name that contains the tests
+#  test: Flood.zip                                    # Test name in the bucket
