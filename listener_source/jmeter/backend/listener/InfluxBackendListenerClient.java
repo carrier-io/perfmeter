@@ -179,56 +179,61 @@ public class InfluxBackendListenerClient extends AbstractBackendListenerClient i
 		String httpMethod;
 		String query = "[";
 		do {
-
-			sampleResult = (SampleResult) sampleResultIterator.next();
-			if (!sampleResult.isSuccessful()) {
-				if (sampleResult instanceof HTTPSampleResult) {
-					HTTPSampleResult http_sample = (HTTPSampleResult) sampleResult;
-					httpMethod = http_sample.getHTTPMethod();
-					query += http_sample.getQueryString();
-				} else {
-					httpMethod = "TRANSACTION";
-				}
-				String requestName = sampleResult.getSampleLabel();
-				String responseCode = sampleResult.getResponseCode();
-				if (responseCode.length()>3){
-					responseCode = "NuN";
-				}
-				String response = sampleResult.getResponseDataAsString().replaceAll("\t", " ")
-						.replaceAll("\n"," ").replaceAll("\"","")
-						.replaceAll("\'","").replaceAll("'","");
-
-				String headers = sampleResult.getRequestHeaders().replaceAll("\t", " ")
-						.replaceAll("\n"," ");
-				if (response.length() == 0) {
-					response = "[]";
-				}
-				if (headers.length() == 0) {
-					headers = "[]";
-				}
-				String errorMessage = "[";
-				for (AssertionResult result : sampleResult.getAssertionResults()) {
-					if (result.isFailure()) {
-						errorMessage += result.getFailureMessage().replaceAll("\n", " ")
-								.replaceAll("\t", " ");
-						break;
+			try {
+				sampleResult = (SampleResult) sampleResultIterator.next();
+				if (!sampleResult.isSuccessful()) {
+					if (sampleResult instanceof HTTPSampleResult) {
+						HTTPSampleResult http_sample = (HTTPSampleResult) sampleResult;
+						httpMethod = http_sample.getHTTPMethod();
+						query += http_sample.getQueryString();
+					} else {
+						httpMethod = "TRANSACTION";
 					}
+					String requestName = sampleResult.getSampleLabel();
+					String responseCode = sampleResult.getResponseCode();
+					if (responseCode.length()>3){
+						responseCode = "NuN";
+					}
+					String response = sampleResult.getResponseDataAsString().replaceAll("\t", " ")
+							.replaceAll("\n"," ").replaceAll("\"","")
+							.replaceAll("\'","").replaceAll("'","");
+
+					String headers = sampleResult.getRequestHeaders().replaceAll("\t", " ")
+							.replaceAll("\n"," ");
+					if (response.length() == 0) {
+						response = "[]";
+					}
+					if (headers.length() == 0) {
+						headers = "[]";
+					}
+					String errorMessage = "[";
+					for (AssertionResult result : sampleResult.getAssertionResults()) {
+						if (result.isFailure()) {
+							errorMessage += result.getFailureMessage().replaceAll("\n", " ")
+									.replaceAll("\t", " ");
+							break;
+						}
+					}
+					errorMessage += "]";
+					query += "]";
+					String error_key = requestName+"_"+httpMethod+"_"+responseCode;
+					fileWriter.write(new StringBuilder()
+							.append("Error key: ").append(error_key).append(delimeter)
+							.append("Request name: ").append(requestName).append(delimeter)
+							.append("Method: ").append(httpMethod).append(delimeter)
+							.append("Response code: ").append(responseCode).append(delimeter)
+							.append("URL: ").append(sampleResult.getUrlAsString()).append(delimeter)
+							.append("Error message: ").append(errorMessage).append(delimeter)
+							.append("Request params: ").append(query).append(delimeter)
+							.append("Headers: ").append(headers).append(delimeter)
+							.append("Response body: ").append(response).append(delimeter)
+							.append("\n").toString());
 				}
-				errorMessage += "]";
-				query += "]";
-				String error_key = requestName+"_"+httpMethod+"_"+responseCode;
-				fileWriter.write(new StringBuilder()
-						.append("Error key: ").append(error_key).append(delimeter)
-						.append("Request name: ").append(requestName).append(delimeter)
-						.append("Method: ").append(httpMethod).append(delimeter)
-						.append("Response code: ").append(responseCode).append(delimeter)
-						.append("URL: ").append(sampleResult.getUrlAsString()).append(delimeter)
-						.append("Error message: ").append(errorMessage).append(delimeter)
-						.append("Request params: ").append(query).append(delimeter)
-						.append("Headers: ").append(headers).append(delimeter)
-						.append("Response body: ").append(response).append(delimeter)
-						.append("\n").toString());
+
+			} catch(Exception e) {
+				e.printStackTrace();
 			}
+
 
 		}
 		while (sampleResultIterator.hasNext());
