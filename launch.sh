@@ -51,17 +51,21 @@ export influx_user=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yam
 export influx_password=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('password',''))")
 export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('influx_db', 'jmeter'))")
 export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('comparison_db', ''))")
-export loki_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('host', 'None'))")
+fi
+if [[ -z "${loki_host}" ]]; then
+export loki_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('host',''))")
+fi
+if [[ -z "${loki_port}" ]]; then
 export loki_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('port'))")
+fi
 if [[ -z "${galloper_url}" ]]; then
-export galloper_url=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('galloper_url'))")
+export galloper_url=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('galloper_url',''))")
 fi
 if [[ -z "${bucket}" ]]; then
-export bucket=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('bucket'))")
+export bucket=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('bucket',''))")
 fi
 if [[ -z "${test}" ]]; then
-export test=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('test'))")
-fi
+export test=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('test',''))")
 fi
 
 arr=(${args// / })
@@ -148,7 +152,7 @@ if [[ -z "${build_id}" ]]; then
 export build_id=${test_name}"_"${test_type}"_"$RANDOM
 fi
 
-if [[ "${loki_host}" != "None" ]]; then
+if [[ "${loki_host}" ]]; then
 /usr/bin/promtail --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id} -config.file=/etc/promtail/docker-config.yaml &
 fi
 
@@ -195,11 +199,9 @@ python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
-start_time=$(date +%s)000
 cd "jmeter/apache-jmeter-5.0/bin/"
 "$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
 cd "/"
-end_time=$(date +%s)000
 
 python ./remove_listeners.py ${args// /%}
 
