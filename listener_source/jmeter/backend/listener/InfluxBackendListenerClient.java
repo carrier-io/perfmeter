@@ -116,6 +116,7 @@ public class InfluxBackendListenerClient extends AbstractBackendListenerClient i
 		while(true) {
 			SampleResult sampleResult;
 			String httpMethod;
+			String sampler_type;
 			boolean isSuccessful;
 			long currentTime;
 			do {
@@ -127,8 +128,10 @@ public class InfluxBackendListenerClient extends AbstractBackendListenerClient i
 					if (sampleResult instanceof HTTPSampleResult) {
 						HTTPSampleResult http_sample = (HTTPSampleResult) sampleResult;
 						httpMethod = http_sample.getHTTPMethod();
+						sampler_type = "REQUEST";
 					} else {
 						httpMethod = "TRANSACTION";
+						sampler_type = "TRANSACTION";
 					}
 					this.getUserMetrics().add(sampleResult);
 				} while((null == this.regexForSamplerList || !sampleResult.getSampleLabel().matches(this.regexForSamplerList)) && !this.samplersToFilter.contains(sampleResult.getSampleLabel()));
@@ -143,21 +146,26 @@ public class InfluxBackendListenerClient extends AbstractBackendListenerClient i
 
 				isSuccessful = sampleResult.isSuccessful();
 				currentTime = System.currentTimeMillis();
-
+				String responseCode = sampleResult.getResponseCode();
+				if (responseCode.length()>3 || responseCode.length()==0){
+					responseCode = "NuN";
+				}
 				double tps_rate = (double)Math.round(calc.getRate() * 1000.0D) / 1000.0D;
 				double kbytes_per_second = (((long)sampleResult.getBytes() + (long)sampleResult.getSentBytes()) / (sampleResult.getTime() * 1024.0D)) * 1000;
 				double networkRate = (double)Math.round(kbytes_per_second * 1000.0D) / 1000.0D;
 				Builder builder = Point.measurement(this.simulation)
 						.time(currentTime, TimeUnit.MILLISECONDS)
 						.addField("connect_time", sampleResult.getConnectTime())
+						.addField("latency", sampleResult.getLatency())
 						.addField("response_time", sampleResult.getTime())
 						.addField("errorCount", (long)sampleResult.getErrorCount())
-						.addField("method", httpMethod)
 						.addField("status", isSuccessful ? "OK" : "KO")
-						.addField("status_code", sampleResult.getResponseCode())
+						.addField("status_code", responseCode)
 						.addField("tpsRate", tps_rate)
 						.addField("networkRate", networkRate)
 						.tag("user_id", sampleResult.getThreadName())
+						.tag("method", httpMethod)
+						.tag("sampler_type", sampler_type)
 						.tag("request_name", sampleResult.getSampleLabel())
 						.tag("env", this.envType)
 						.tag("test_type", this.testType)
@@ -191,7 +199,7 @@ public class InfluxBackendListenerClient extends AbstractBackendListenerClient i
 					}
 					String requestName = sampleResult.getSampleLabel();
 					String responseCode = sampleResult.getResponseCode();
-					if (responseCode.length()>3){
+					if (responseCode.length()>3 || responseCode.length()==0){
 						responseCode = "NuN";
 					}
 					String response = sampleResult.getResponseDataAsString().replaceAll("\t", " ")
