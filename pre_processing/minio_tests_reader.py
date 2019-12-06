@@ -5,11 +5,11 @@ from traceback import format_exc
 
 URL = environ.get('galloper_url')
 BUCKET = environ.get("bucket")
-TEST = environ.get("test")
+TEST = environ.get("artifact")
 PATH_TO_FILE = f'/tmp/{TEST}'
 TESTS_PATH = environ.get("tests_path", '/mnt/jmeter')
 
-if (not all(a for a in [URL, BUCKET, TEST])):
+if not all(a for a in [URL, BUCKET, TEST]):
     exit(0)
 
 try:
