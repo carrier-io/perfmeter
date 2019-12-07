@@ -51,21 +51,12 @@ export influx_user=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yam
 export influx_password=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('password',''))")
 export jmeter_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('influx_db', 'jmeter'))")
 export comparison_db=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('influx',{}); print(y.get('comparison_db', ''))")
-fi
 if [[ -z "${loki_host}" ]]; then
 export loki_host=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('host',''))")
 fi
 if [[ -z "${loki_port}" ]]; then
-export loki_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('port'))")
+export loki_port=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('loki',{}); print(y.get('port', '3100'))")
 fi
-if [[ -z "${galloper_url}" ]]; then
-export galloper_url=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('galloper_url',''))")
-fi
-if [[ -z "${bucket}" ]]; then
-export bucket=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('bucket',''))")
-fi
-if [[ -z "${test}" ]]; then
-export test=$(python -c "import yaml; y = yaml.load(open('/tmp/config.yaml').read()).get('minio',{}); print(y.get('test',''))")
 fi
 
 arr=(${args// / })
@@ -193,7 +184,8 @@ if [[ -z "${JVM_ARGS}" ]]; then
 fi
 echo "Using ${JVM_ARGS} as JVM Args"
 export tests_path=/mnt/jmeter
-python minio_reader.py
+python minio_tests_reader.py
+python minio_additional_files_reader.py
 
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
@@ -206,11 +198,6 @@ cd "/"
 python ./remove_listeners.py ${args// /%}
 
 echo "Tests are done"
-if [[ -z "${redis_connection}" ]]; then
-export _redis_connection=""
-else
-export _redis_connection="-r ${redis_connection}"
-fi
 
 if [[ -z "${influx_user}" ]]; then
 export _influx_user=""
@@ -229,6 +216,6 @@ export _influx_host="-i ${influx_host}"
 else
 export _influx_host=""
 fi
-
-python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_redis_connection} ${_influx_user} ${_influx_password}
+mkdir '/tmp/data_for_post_processing'
+python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password}
 echo "END Running Jmeter on `date`"
