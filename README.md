@@ -4,8 +4,8 @@
 
 ### Docker tags and versioning
 
-getcarrier/perfmeter:1.0 - Carrier Perfmeter release version 1.0
-    
+getcarrier/perfmeter:1.0 - Carrier PerfMeter release version 1.0    
+
 getcarrier/perfmeter:latest - bleeding edge, not recommended for production
 
 
@@ -22,6 +22,11 @@ docker run --rm -u 0:0 \
        -v <your_local_path_to_tests>:/mnt/jmeter/ \
        -v <your_local_path_to_config/config.yaml>:/tmp/ #optional
        -v <your_local_path_ to_reports>:/tmp/reports \   #optional
+       -e "env=<env>" \  #optional, default - 'demo'
+       -e "test_type=<test_type>" \  #optional, default - 'demo'
+       -e "loki_host={{ http://loki }}" # loki host or IP
+       -e "loki_port=3100" # optional, default 3100
+       -e "JVM_ARGS='-Xms1g -Xmx2g'"
        getcarrier/perfmeter:1.0 \
        -n -t /mnt/jmeter/<test_name> 
        -q /mnt/jmeter/<properties_file> \    #optional
@@ -34,11 +39,21 @@ docker run --rm -u 0:0 \
 
 `your_local_path_to_tests` - path on your local filesystem where you store jMeter tests
 
+`test_type` - optional tag, used to filter test results
+
+`env` - optional tag, used to filter test results
+
+`loki_host` - loki host or IP, used to report failed requests to Loki
+
+`loki_port` - optional, default 3100
+
 `test_name` - name of the JMeter test file that will be run
 
 `properties_file` - properties file name (described below)
 
 `your_local_path_to_config/config.yaml` - config.yaml file with InfluxDB, Jira, Loki and Report Portal parameters (described below)
+
+`JVM_ARGS` - Java heap params, like `-Xms1g -Xmx1g`
 
 
 
@@ -85,6 +100,11 @@ To do this, you need to uncomment the necessary configuration section and pass p
 #  rp_token: XXXXXXXXXXXXX                            # ReportPortal authentication token
 #  rp_project_name: XXXXXX                            # Name of a Project in ReportPortal to send results to
 #  rp_launch_name: XXXXXX                             # Name of a launch in ReportPortal to send results to
+#  check_functional_errors: False                     # Perform analysis by functional error. False or True (Default: False)
+#  check_performance_degradation: False               # Perform analysis compared to baseline False or True (Default: False)
+#  check_missed_thresholds: False                     # Perform analysis by exceeding thresholds False or True (Default: False)
+#  performance_degradation_rate: 20                   # Minimum performance degradation rate at which to create a launch (Default: 20)
+#  missed_thresholds_rate: 50                         # Minimum missed thresholds rate at which to create a launch (Default: 50)
 #jira:
 #  url: https://jira.com                              # Url to Jira
 #  username: some.dude                                # User to create tickets
@@ -95,7 +115,11 @@ To do this, you need to uncomment the necessary configuration section and pass p
 #  labels: Performance, perfmeter                     # Comaseparated list of lables for ticket
 #  watchers: another.dude                             # Comaseparated list of Jira IDs for watchers
 #  jira_epic_key: XYZC-123                            # Jira epic key (or id)
-#influx:
+#  check_functional_errors: False                     # Perform analysis by functional error False or True (Default: False)
+#  check_performance_degradation: False               # Perform analysis compared to baseline False or True (Default: False)
+#  check_missed_thresholds: False                     # Perform analysis by exceeding thresholds False or True (Default: False)
+#  performance_degradation_rate: 20                   # Minimum performance degradation rate at which to create a JIRA ticket (Default: 20)
+#  missed_thresholds_rate: 50                         # Minimum missed thresholds rate at which to create a JIRA ticket (Default: 50)#influx:
 #  host: carrier_influx                               # Influx host DNS or IP
 #  port: 8086                                         # Influx port (Default: 8086)
 #  jmeter_db: jmeter                                  # Database name for jmeter test results (Default: jmeter)
@@ -155,3 +179,46 @@ node{
 In order to run your tests you need to copy your tests or clone your repository with the tests in the Jenkins workspace.
 
 Then in the container launch command you need to specify the path to your tests (/launch.sh -n -t ${WORKSPACE}/<path_to_test>).
+
+### Getting tests from object storage
+
+You can upload your JMeter tests with all the necessary files (csv files, scripts) in ".zip" format to the Galloper artifacts.
+
+Precondition for uploading tests is bucket availability in object storage
+
+To create a bucket you should:
+
+1. Open a galloper url in the browser e.g. `http://{{ galloper_url }}`
+2. Click on  Artifacts in the side menu
+3. Click on the Bucket icon in right side of the page and choose `Create New Bucket`
+4. Name your bucket e.g. jmeter
+
+Now you can upload your tests with all dependencies in ".zip" format.
+
+In order to run the tests you can use the following command
+
+```
+docker run --rm -t -u 0:0 \
+        -e galloper_url="http://{{ galloper_url }}" \
+        -e bucket="jmeter" -e artifact="{{ file_with_your_tests.zip }}" \
+        getcarrier/perfmeter:latest \
+        -n -t /mnt/jmeter/{{ test_name }}.jmx \
+        -Jinflux.host={{ influx_dns_or_ip }}
+```
+
+What it will do is copy saved artifact to `/mnt/jmeter/` folder and execute JMeter test `{{ test_name }}.jmx`
+
+Also you can upload additional plugins/extensions to JMeter container using env variable `additional_files`
+
+To do that you should upload your files to the Galloper artifacts and add env variable to the docker run command like this:
+
+```
+docker run --rm -t -u 0:0 \
+       -e galloper_url="http://{{ galloper_url }}" \
+       -e additional_files='{"jmeter/InfluxBackendListenerClient.jar": "/jmeter/apache-jmeter-5.0/lib/ext/InfluxBackendListenerClient.jar"}',
+       getcarrier/perfmeter:latest \
+       -n -t /mnt/jmeter/{{ test_name }}.jmx \
+       -Jinflux.host={{ influx_dns_or_ip }}
+```
+
+It will copy `InfluxBackendListenerClient.jar` from `jmeter` bucket to container path `/jmeter/apache-jmeter-5.0/lib/ext/InfluxBackendListenerClient.jar`
