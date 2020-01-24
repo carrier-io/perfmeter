@@ -187,7 +187,9 @@ export tests_path=/mnt/jmeter
 python minio_tests_reader.py
 python minio_additional_files_reader.py
 
+if [[ "${influx_host}" ]]; then
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
+fi
 
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
@@ -195,7 +197,9 @@ cd "jmeter/apache-jmeter-5.0/bin/"
 "$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
 cd "/"
 
+if [[ "${influx_host}" ]]; then
 python ./remove_listeners.py ${args// /%}
+fi
 
 echo "Tests are done"
 
