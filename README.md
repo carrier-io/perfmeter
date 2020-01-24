@@ -21,18 +21,15 @@ Example docker invocation:
 docker run --rm -u 0:0 \
        -v <your_local_path_to_tests>:/mnt/jmeter/ \
        -v <your_local_path_to_config/config.yaml>:/tmp/ #optional
-       -v <your_local_path_ to_reports>:/tmp/reports \   #optional
+       -v <your_local_path_to_reports>:/tmp/reports \   #optional
        -e "env=<env>" \  #optional, default - 'demo'
        -e "test_type=<test_type>" \  #optional, default - 'demo'
        -e "loki_host={{ http://loki }}" # loki host or IP
        -e "loki_port=3100" # optional, default 3100
        -e "JVM_ARGS='-Xms1g -Xmx2g'"
-       getcarrier/perfmeter:1.0 \
+       getcarrier/perfmeter:latest \
        -n -t /mnt/jmeter/<test_name> 
        -q /mnt/jmeter/<properties_file> \    #optional
-       -j /tmp/reports/jmeter_$(date +%s).log \   #optional
-       -l /tmp/reports/jmeter_$(date +%s).jtl -e \  # optional
-       -o /tmp/reports/HtmlReport_$(date +%s)/    #optional
 ```
 
 `your_local_path_to_reports` - path on your local filesystem where you want to store reports from this run
@@ -58,7 +55,26 @@ docker run --rm -u 0:0 \
 
 
 ##### 3. Open test report
-Report is located in your `your_local_path_to_reports` folder
+Reports is located in your `your_local_path_to_reports` folder if you have mounted it to the container.
+
+Also you can generate JUnit xml report based on data from `jmeter.jtl` file. To do this you should provide next env variables to the container:
+
+`-e junit_report=True` - JUnit report is located in the `/tmp/reports` folder
+
+`-e tp=10` - Threshold for avg throughput, default value - 10 req/sec
+
+`-e rt=500` - Threshold for response time by 95th pct, default value - 500 ms
+
+`-e er=5` - Threshold for error rate, default value - 5%.
+
+Note: Do not pass any additional parameters to generate reports. Perfmeter by default generates following reports in `/tmp/reports` folder:
+
+`jmeter.log` - The main log file. As well as recording errors, the jmeter.log file records some information about the test run.
+
+`jmeter.jtl` - CSV file with test results.
+
+`HtmlReport` - Default JMeter HTML report with test results.
+
 
 ### Configuration
 Tests can be configured using `properties_file` file.
@@ -156,13 +172,10 @@ node{
         for (param in params) {
             dockerParamsString += " ${param}"
         }
-        docker.image("getcarrier/perfmeter:1.0").inside(dockerParamsString){
+        docker.image("getcarrier/perfmeter:latest").inside(dockerParamsString){
             sh "mkdir /tmp/reports"
             sh "pwd"
             sh """cd / && ls -la &&  /launch.sh  -n -t /mnt/jmeter/FloodIO.jmx \\
-                  -j /tmp/reports/jmeter_${JOB_NAME}_${BUILD_ID}.log \\
-                  -l /tmp/reports/jmeter_${JOB_NAME}_${BUILD_ID}.jtl \\
-                  -e -o /tmp/reports/HtmlReport_${JOB_NAME}_${BUILD_ID} \\
                   -Jinflux.host="""+get_influx_host(env.JENKINS_URL)+""" \\
                   -JVUSERS=10 -JDURATION=120 -Jinflux.db=jmeter -Jinflux.port=8086 \\
                   -JRAMP_UP=1 -Jtest_name=test -Jbuild.id=flood_io_${JOB_NAME}_${BUILD_ID} \\
