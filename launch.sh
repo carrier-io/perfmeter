@@ -177,6 +177,7 @@ fi
 if [[ ${args} != *"-Jbuild.id"* ]]; then
 args="${args} -Jbuild.id=${build_id}"
 fi
+args="${args} -j /tmp/reports/jmeter.log -l /tmp/reports/jmeter.jtl -e -o /tmp/reports/HtmlReport/"
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then
