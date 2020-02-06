@@ -37,6 +37,7 @@ if __name__ == '__main__':
     logParser = ErrorLogParser(args)
     aggregated_errors = logParser.parse_errors()
     prefix = environ.get('DISTRIBUTED_MODE_PREFIX')
+    save_reports = environ.get('save_reports')
     if prefix:
         URL = environ.get('galloper_url')
         BUCKET = environ.get("results_bucket")
@@ -57,10 +58,12 @@ if __name__ == '__main__':
 
         # Send data to minio
         create_bucket = requests.post(f'{URL}/artifacts/bucket', allow_redirects=True, data={'bucket': BUCKET})
-        files = {'file': open(path_to_reports + ".zip", 'rb')}
-        requests.post(f'{URL}/artifacts/{BUCKET}/upload', allow_redirects=True, files=files)
         files = {'file': open(path_to_test_results + ".zip", 'rb')}
         requests.post(f'{URL}/artifacts/{BUCKET}/upload', allow_redirects=True, files=files)
+        if save_reports:
+            files = {'file': open(path_to_reports + ".zip", 'rb')}
+            requests.post(f'{URL}/artifacts/{BUCKET}/upload', allow_redirects=True, files=files)
+
     else:
         post_processor = PostProcessor()
         post_processor.post_processing(args, aggregated_errors)
