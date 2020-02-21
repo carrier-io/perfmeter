@@ -35,7 +35,11 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
     logParser = ErrorLogParser(args)
-    aggregated_errors = logParser.parse_errors()
+    try:
+        aggregated_errors = logParser.parse_errors()
+    except Exception as e:
+        aggregated_errors = {}
+
     prefix = environ.get('DISTRIBUTED_MODE_PREFIX')
     save_reports = environ.get('save_reports')
     if prefix:
