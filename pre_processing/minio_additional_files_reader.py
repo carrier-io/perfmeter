@@ -3,6 +3,7 @@ import requests
 from traceback import format_exc
 import json
 
+PROJECT_ID = environ.get('project_id')
 URL = environ.get('galloper_url')
 ADDITIONAL_FILES = environ.get("additional_files")
 
@@ -11,8 +12,12 @@ if not all(a for a in [URL, ADDITIONAL_FILES]):
 
 try:
     files = json.loads(ADDITIONAL_FILES)
+    if PROJECT_ID:
+        endpoint = f'/api/v1/artifacts/{PROJECT_ID}'
+    else:
+        endpoint = '/artifacts'
     for file, path in files.items():
-        r = requests.get(f'{URL}/artifacts/{file}', allow_redirects=True)
+        r = requests.get(f'{URL}/{endpoint}/{file}', allow_redirects=True)
         with open(path, 'wb') as file_data:
             file_data.write(r.content)
 except Exception:
