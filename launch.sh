@@ -177,33 +177,6 @@ fi
 if [[ ${args} != *"-Jbuild.id"* ]]; then
 args="${args} -Jbuild.id=${build_id}"
 fi
-args="${args} -j /tmp/reports/jmeter.log -l /tmp/reports/jmeter.jtl -e -o /tmp/reports/HtmlReport/"
-set -e
-
-if [[ -z "${JVM_ARGS}" ]]; then
-  export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
-fi
-echo "Using ${JVM_ARGS} as JVM Args"
-export tests_path=/mnt/jmeter
-python minio_tests_reader.py
-python minio_additional_files_reader.py
-
-if [[ "${influx_host}" ]]; then
-python ./place_listeners.py ${args// /%} ./backend_listener.jmx
-fi
-
-echo "START Running Jmeter on `date`"
-echo "jmeter args=${args}"
-cd "jmeter/apache-jmeter-5.0/bin/"
-"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
-cd "/"
-
-if [[ "${influx_host}" ]]; then
-python ./remove_listeners.py ${args// /%}
-fi
-
-echo "Tests are done"
-
 if [[ -z "${influx_user}" ]]; then
 export _influx_user=""
 else
@@ -221,6 +194,34 @@ export _influx_host="-i ${influx_host}"
 else
 export _influx_host=""
 fi
+args="${args} -j /tmp/reports/jmeter.log -l /tmp/reports/jmeter.jtl -e -o /tmp/reports/HtmlReport/"
+set -e
+
+if [[ -z "${JVM_ARGS}" ]]; then
+  export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
+fi
+echo "Using ${JVM_ARGS} as JVM Args"
+export tests_path=/mnt/jmeter
+python minio_tests_reader.py
+python minio_additional_files_reader.py
 mkdir '/tmp/data_for_post_processing'
+python minio_poster.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password}
+
+if [[ "${influx_host}" ]]; then
+python ./place_listeners.py ${args// /%} ./backend_listener.jmx
+fi
+
+echo "START Running Jmeter on `date`"
+echo "jmeter args=${args}"
+cd "jmeter/apache-jmeter-5.0/bin/"
+"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
+cd "/"
+
+if [[ "${influx_host}" ]]; then
+python ./remove_listeners.py ${args// /%}
+fi
+
+echo "Tests are done"
+
 python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password}
 echo "END Running Jmeter on `date`"
