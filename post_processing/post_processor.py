@@ -41,7 +41,7 @@ if __name__ == '__main__':
         aggregated_errors = {}
 
     prefix = os.environ.get('DISTRIBUTED_MODE_PREFIX')
-    save_reports = os.environ.get('save_reports')
+    save_reports = True if os.environ.get('save_reports') == "True" else False
     token = os.environ.get('token')
     if prefix:
         PROJECT_ID = os.environ.get('project_id')
