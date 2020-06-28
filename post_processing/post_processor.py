@@ -68,6 +68,7 @@ if __name__ == '__main__':
             f.write(json.dumps(args))
         with open(DATA_FOR_POST_PROCESSING_FOLDER + "aggregated_errors.json", 'w') as f:
             f.write(json.dumps(aggregated_errors))
+        path_to_test_results = "/tmp/" + prefix + "_" + str(args['lg_id'])
         shutil.make_archive(path_to_test_results, 'zip', DATA_FOR_POST_PROCESSING_FOLDER)
 
         # Send data to minio
