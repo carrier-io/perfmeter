@@ -213,8 +213,8 @@ fi
 
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
-cd "jmeter/apache-jmeter-5.0/bin/"
-"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
+cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
+"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}//bin/ApacheJMeter.jar" ${args}
 cd "/"
 
 if [[ "${influx_host}" ]]; then
