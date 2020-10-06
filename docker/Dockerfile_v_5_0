@@ -1,11 +1,4 @@
-FROM golang:1.13 as build
-
-RUN apt-get update && apt-get install -qy libsystemd-dev git protobuf-compiler
-
-WORKDIR /src
-RUN git clone https://github.com/grafana/loki.git
-WORKDIR /src/loki
-RUN make clean && make BUILD_IN_CONTAINER=false promtail
+FROM getcarrier/performance:base as build
 
 FROM ubuntu:16.04
 
