@@ -112,6 +112,12 @@ for i in "${arr[@]}"; do
           if [[ $i =~ -Jcomparison_db=(.+) ]]; then
             comparison_db=${BASH_REMATCH[1]}
           fi
+          if [[ $i =~ -Jinflux.username=(.+) ]]; then
+            influx_user=${BASH_REMATCH[1]}
+          fi
+          if [[ $i =~ -Jinflux.password=(.+) ]]; then
+            influx_password=${BASH_REMATCH[1]}
+          fi
       done
 fi
 
