@@ -112,6 +112,9 @@ for i in "${arr[@]}"; do
           if [[ $i =~ -Jcomparison_db=(.+) ]]; then
             comparison_db=${BASH_REMATCH[1]}
           fi
+          if [[ $i =~ -Jtelegraf_db=(.+) ]]; then
+            telegraf_db=${BASH_REMATCH[1]}
+          fi
           if [[ $i =~ -Jinflux.username=(.+) ]]; then
             influx_user=${BASH_REMATCH[1]}
           fi
@@ -131,6 +134,10 @@ fi
 
 if [[ -z "${comparison_db}" ]]; then
 comparison_db="comparison"
+fi
+
+if [[ -z "${telegraf_db}" ]]; then
+telegraf_db="telegraf"
 fi
 
 if [[ -z "${test_name}" ]]; then
@@ -158,6 +165,7 @@ sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${test_name}_${lg_id}/g" /etc/tele
 sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_USER/${influx_user}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_PASSWORD/${influx_password}/g" /etc/telegraf/telegraf.conf
+sudo sed -i "s/telegraf/${telegraf_db}/g" /etc/telegraf/telegraf.conf
 sudo service telegraf restart
 fi
 DEFAULT_EXECUTION="/usr/bin/java"
@@ -211,7 +219,7 @@ export tests_path=/mnt/jmeter
 python minio_tests_reader.py
 python minio_additional_files_reader.py
 mkdir '/tmp/data_for_post_processing'
-python minio_poster.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password}
+python minio_poster.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -icdb ${comparison_db} -en ${env} ${_influx_user} ${_influx_password}
 
 if [[ "${influx_host}" ]]; then
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
@@ -229,5 +237,5 @@ fi
 
 echo "Tests are done"
 
-python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password}
+python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -icdb ${comparison_db} -en ${env} ${_influx_user} ${_influx_password}
 echo "END Running Jmeter on `date`"
