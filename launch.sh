@@ -1,5 +1,9 @@
 #!/bin/bash
 
+
+#RUN INFLUXDB
+bash entrypoint.sh influxd &
+
 args=$@
 if [[ ${args} == *"-q "* ]]; then
 IFS=" " read -ra PARAMS <<< "$args"
@@ -157,7 +161,7 @@ export build_id=${test_name}"_"${test_type}"_"$RANDOM
 fi
 
 if [[ "${loki_host}" ]]; then
-/usr/bin/promtail --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id} -config.file=/etc/promtail/docker-config.yaml &
+/usr/bin/promtail/promtail-linux-amd64 --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id} -config.file=/etc/promtail/docker-config.yaml &
 fi
 
 if [[ "${influx_host}" ]]; then
@@ -166,7 +170,9 @@ sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegr
 sudo sed -i "s/INFLUX_USER/${influx_user}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_PASSWORD/${influx_password}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/telegraf/${telegraf_db}/g" /etc/telegraf/telegraf.conf
+sudo sed -i "s/TEST_NAME/${test_name}/g" /etc/telegraf/telegraf_local_results.conf
 sudo service telegraf restart
+sudo telegraf -config /etc/telegraf/telegraf_local_results.conf &
 fi
 DEFAULT_EXECUTION="/usr/bin/java"
 JOLOKIA_AGENT="-javaagent:/opt/java/jolokia-jvm-1.6.0-agent.jar=config=/opt/jolokia.conf"
@@ -208,7 +214,7 @@ export _influx_host="-i ${influx_host}"
 else
 export _influx_host=""
 fi
-args="${args} -j /tmp/reports/jmeter.log -l /tmp/reports/jmeter.jtl -e -o /tmp/reports/HtmlReport/"
+args="${args} -j /tmp/reports/jmeter.log"
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then
@@ -220,6 +226,7 @@ python minio_tests_reader.py
 python minio_additional_files_reader.py
 mkdir '/tmp/data_for_post_processing'
 python minio_poster.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -icdb ${comparison_db} -en ${env} ${_influx_user} ${_influx_password}
+python downsampling.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password} &
 
 if [[ "${influx_host}" ]]; then
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
@@ -230,7 +237,6 @@ echo "jmeter args=${args}"
 cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
 "$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}//bin/ApacheJMeter.jar" ${args}
 cd "/"
-
 if [[ "${influx_host}" ]]; then
 python ./remove_listeners.py ${args// /%}
 fi
@@ -238,4 +244,6 @@ fi
 echo "Tests are done"
 
 python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -icdb ${comparison_db} -en ${env} ${_influx_user} ${_influx_password}
+echo "Results processing. Sleep for 1 minute"
+sleep 60
 echo "END Running Jmeter on `date`"

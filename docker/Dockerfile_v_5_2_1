@@ -1,13 +1,4 @@
-FROM getcarrier/performance:base as build
-
-FROM ubuntu:16.04
-
-RUN apt-get update \
-    && apt-get -y install openjdk-8-jdk software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
-ENV PATH $JAVA_HOME/bin:$PATH
+FROM getcarrier/performance:base
 
 ENV JMETER_VERSION=5.2.1
 
@@ -19,7 +10,7 @@ ARG GID=1001
 
 # Install utilities
 RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
-    apt-get install -y --no-install-recommends bash sudo unzip git wget python3.6 python3.6-dev && \
+    apt-get install -y --no-install-recommends bash git python3.6 python3.6-dev && \
     wget https://bootstrap.pypa.io/get-pip.py && python3.6 get-pip.py && \
     ln -s /usr/bin/python3.6 /usr/local/bin/python3 && \
     ln -s /usr/bin/python3.6 /usr/local/bin/python && \
@@ -29,7 +20,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
     python -m pip install 'common==0.1.2' 'configobj==5.0.6' 'redis==3.2.0' 'argparse==1.4.0'  && \
     rm -rf /tmp/*
 
-RUN pip install git+https://github.com/carrier-io/perfreporter.git@v.2.0
+RUN pip install git+https://github.com/carrier-io/perfreporter.git
 
 # Creating carrier user and making him sudoer
 RUN groupadd -g $GID $UNAME
@@ -42,17 +33,16 @@ RUN  mkdir /opt/java && cd /opt/java \
  http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/1.6.0/jolokia-jvm-1.6.0-agent.jar
 
 # Installing Telegraf
-RUN cd /tmp && wget https://dl.influxdata.com/telegraf/releases/telegraf_1.8.3-1_amd64.deb && \
-    dpkg -i telegraf_1.8.3-1_amd64.deb
+RUN cd /tmp && wget https://dl.influxdata.com/telegraf/releases/telegraf_1.10.4-1_amd64.deb && \
+    dpkg -i telegraf_1.10.4-1_amd64.deb
 COPY telegraf.conf /etc/telegraf/telegraf.conf
+COPY telegraf_local_results.conf /etc/telegraf/telegraf_local_results.conf
 COPY jolokia.conf /opt
 
 RUN apt-get update && \
   apt-get install -qy \
   tzdata ca-certificates libsystemd-dev && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-COPY --from=build /src/loki/cmd/promtail/promtail /usr/bin/promtail
-COPY promtail-docker-config.yaml /etc/promtail/docker-config.yaml
 
 # Install JMeter
 RUN mkdir /jmeter
