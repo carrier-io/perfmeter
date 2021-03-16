@@ -1,4 +1,4 @@
-FROM getcarrier/performance:base
+FROM getcarrier/performance:base-2.5
 
 ENV JMETER_VERSION=5.1
 
