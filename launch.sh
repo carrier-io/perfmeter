@@ -31,7 +31,7 @@ do
           if [[ $param =~ comparison_db=(.+) ]]; then
             export comparison_db=${BASH_REMATCH[1]}
           fi
-          if [[ $param =~ test.type=(.+) ]]; then
+          if [[ $param =~ test_type=(.+) ]]; then
             export test_type=${BASH_REMATCH[1]}
           fi
           if [[ $param =~ test_name=(.+) ]]; then
@@ -65,17 +65,17 @@ fi
 
 arr=(${args// / })
 
-if [[ ${args} == *"-Jtest.type="* ]]; then
+if [[ ${args} == *"-Jtest_type="* ]]; then
 for i in "${arr[@]}"; do
-          if [[ $i =~ -Jtest.type=(.+) ]]; then
+          if [[ $i =~ -Jtest_type=(.+) ]]; then
             export test_type=${BASH_REMATCH[1]}
           fi
     done
 fi
 
-if [[ ${args} == *"-Jenv.type="* ]]; then
+if [[ ${args} == *"-Jenv_type="* ]]; then
 for i in "${arr[@]}"; do
-          if [[ $i =~ -Jenv.type=(.+) ]]; then
+          if [[ $i =~ -Jenv_type=(.+) ]]; then
             export env=${BASH_REMATCH[1]}
           fi
     done

@@ -3,12 +3,12 @@
         <collectionProp name="Arguments.arguments">
           <elementProp name="envType" elementType="Argument">
             <stringProp name="Argument.name">envType</stringProp>
-            <stringProp name="Argument.value">${__P(env.type,demo)}</stringProp>
+            <stringProp name="Argument.value">${__P(env_type,demo)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="testType" elementType="Argument">
             <stringProp name="Argument.name">testType</stringProp>
-            <stringProp name="Argument.value">${__P(test.type,demo)}</stringProp>
+            <stringProp name="Argument.value">${__P(test_type,demo)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="loadGenerator" elementType="Argument">
