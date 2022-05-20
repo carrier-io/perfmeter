@@ -218,7 +218,7 @@ args="${args} -j /tmp/reports/jmeter.log"
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then
-  export JVM_ARGS="-Xmn1g -Xms1g -Xmx1g"
+  export JVM_ARGS="-Xms3g -Xmx3g"
 fi
 echo "Using ${JVM_ARGS} as JVM Args"
 export tests_path=/mnt/jmeter
