@@ -30,6 +30,8 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
+    if environ.get("report_id"):
+        args["report_id"] = environ.get("report_id")
 
     prefix = environ.get('DISTRIBUTED_MODE_PREFIX')
     save_reports = environ.get('save_reports')

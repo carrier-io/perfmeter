@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 #RUN INFLUXDB
 bash entrypoint.sh influxd &
 
@@ -161,7 +160,7 @@ export build_id=${test_name}"_"${test_type}"_"$RANDOM
 fi
 
 if [[ "${loki_host}" ]]; then
-/usr/bin/promtail/promtail-linux-amd64 --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id} -config.file=/etc/promtail/docker-config.yaml &
+/usr/bin/promtail/promtail-linux-amd64 --client.url=${loki_host}:${loki_port}/api/prom/push --client.external-labels=hostname=${lg_id},project=${project_id},report_id=${report_id},build_id=${build_id} -config.file=/etc/promtail/promtail-logger.yaml &
 fi
 
 if [[ "${influx_host}" ]]; then
@@ -214,7 +213,7 @@ export _influx_host="-i ${influx_host}"
 else
 export _influx_host=""
 fi
-args="${args} -j /tmp/reports/jmeter.log"
+args="${args} -j /tmp/jmeter_logs.log"
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then

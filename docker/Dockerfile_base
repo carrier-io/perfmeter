@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update \
     && apt-get -y install openjdk-8-jdk software-properties-common curl unzip wget sudo \
@@ -13,6 +13,7 @@ RUN unzip "/usr/bin/promtail-linux-amd64.zip" -d /usr/bin/promtail
 RUN chmod a+x "/usr/bin/promtail/promtail-linux-amd64"
 
 COPY promtail-docker-config.yaml /etc/promtail/docker-config.yaml
+COPY promtail-logger.yaml /etc/promtail/promtail-logger.yaml
 
 
 

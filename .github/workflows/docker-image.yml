@@ -22,6 +22,7 @@ jobs:
     -
        name: Build
        run: |
+          docker build -t getcarrier/performance:base-latest -f docker/Dockerfile_base .
           docker build -t getcarrier/perfmeter:latest-5.4.1 -f docker/Dockerfile_v_5_4_1 .
           docker build -t getcarrier/perfmeter:latest-5.3 -f docker/Dockerfile .
           docker build -t getcarrier/perfmeter:latest-5.2.1 -f docker/Dockerfile_v_5_2_1 .
@@ -33,6 +34,7 @@ jobs:
     -
        name: Push
        run: |
+         docker push getcarrier/performance:base-latest
          docker push getcarrier/perfmeter:latest-5.4.1
          docker push getcarrier/perfmeter:latest-5.3
          docker push getcarrier/perfmeter:latest-5.2.1
