@@ -224,7 +224,7 @@ export tests_path=/mnt/jmeter
 python minio_tests_reader.py
 python minio_additional_files_reader.py
 mkdir '/tmp/data_for_post_processing'
-python minio_poster.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -icdb ${comparison_db} -en ${env} ${_influx_user} ${_influx_password}
+#python minio_poster.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -icdb ${comparison_db} -en ${env} ${_influx_user} ${_influx_password}
 python downsampling.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password} &
 
 if [[ "${influx_host}" ]]; then
