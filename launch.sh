@@ -164,6 +164,7 @@ if [[ "${loki_host}" ]]; then
 fi
 
 if [[ "${influx_host}" ]]; then
+sudo sed -i "s/BUILD_ID/${build_id}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/LOAD_GENERATOR_NAME/${lg_name}_${test_name}_${lg_id}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_USER/${influx_user}/g" /etc/telegraf/telegraf.conf
