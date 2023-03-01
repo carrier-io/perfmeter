@@ -72,23 +72,6 @@ if __name__ == '__main__':
         path_to_reports = "/tmp/reports_" + prefix + "_" + str(args['lg_id'])
         shutil.make_archive(path_to_reports, 'zip', RESULTS_FOLDER)
 
-        # # Remove tmp files
-        # path_to_test_results = "/tmp/" + prefix + "_" + str(args['lg_id'])
-        # if os.path.exists(path_to_test_results + ".zip"):
-        #     os.remove(path_to_test_results + ".zip")
-        # if os.path.exists(DATA_FOR_POST_PROCESSING_FOLDER + "args.json"):
-        #     os.remove(DATA_FOR_POST_PROCESSING_FOLDER + "args.json")
-        # if os.path.exists(DATA_FOR_POST_PROCESSING_FOLDER + "aggregated_errors.json"):
-        #     os.remove(DATA_FOR_POST_PROCESSING_FOLDER + "aggregated_errors.json")
-
-        # # Make archive with data for post processing
-        # with open(DATA_FOR_POST_PROCESSING_FOLDER + "args.json", 'w') as f:
-        #     f.write(json.dumps(args))
-        # with open(DATA_FOR_POST_PROCESSING_FOLDER + "aggregated_errors.json", 'w') as f:
-        #     f.write(json.dumps(aggregated_errors))
-        # path_to_test_results = "/tmp/" + prefix + "_" + str(args['lg_id'])
-        # shutil.make_archive(path_to_test_results, 'zip', DATA_FOR_POST_PROCESSING_FOLDER)
-
         # Send data to minio
         headers = {'Authorization': f'bearer {token}'} if token else {}
         upload_url = f'{URL}/api/v1/artifacts/artifacts/{PROJECT_ID}/{BUCKET}'
