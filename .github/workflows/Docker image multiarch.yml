@@ -11,9 +11,6 @@ on:
           default: "Dockerfile_v_5_5"
           description: "Dockerfile name in 'docker' folder"
           required: true
-        push:
-          default: true
-          description: "push images on build success"
 
 
 jobs:
@@ -41,7 +38,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
-          push: ${{ github.event.inputs.push }}
+          push: true
           tags: getcarrier/perfmeter:${{ github.event.inputs.version }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
