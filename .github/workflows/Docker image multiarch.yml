@@ -1,4 +1,4 @@
-name: Build and push Keycloak
+name: Build and push multiarch image
 
 on:
   workflow_dispatch:
