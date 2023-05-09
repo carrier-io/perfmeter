@@ -235,7 +235,8 @@ fi
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
 cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
-"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}//bin/ApacheJMeter.jar" ${args}
+echo "$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}//bin/ApacheJMeter.jar" $custom_cmd ${args}
+"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}//bin/ApacheJMeter.jar" $custom_cmd ${args}
 cd "/"
 if [[ "${influx_host}" ]]; then
 python ./remove_listeners.py ${args// /%}

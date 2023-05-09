@@ -80,9 +80,9 @@ if __name__ == '__main__':
         # files = {'file': open(path_to_test_results + ".zip", 'rb')}
         #
         # requests.post(upload_url, allow_redirects=True, files=files, headers=headers)
-        if save_reports:
-            files = {'file': open(path_to_reports + ".zip", 'rb')}
-            requests.post(upload_url, allow_redirects=True, files=files, headers=headers)
+        files = {'file': open(path_to_reports + ".zip", 'rb')}
+        requests.post(upload_url, allow_redirects=True, files=files, headers=headers)
+
 
     else:
         post_processor = PostProcessor()
