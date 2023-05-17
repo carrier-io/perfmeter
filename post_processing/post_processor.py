@@ -69,7 +69,7 @@ if __name__ == '__main__':
             exit(0)
 
         # Make archive with jmeter reports
-        path_to_reports = "/tmp/reports_" + prefix + "_" + str(args['lg_id'])
+        path_to_reports = "/tmp/reports_test_results_" + environ.get("build_id") + "_" + str(args['lg_id'])
         shutil.make_archive(path_to_reports, 'zip', RESULTS_FOLDER)
 
         # Send data to minio
