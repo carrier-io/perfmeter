@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
         docker_tag:
-          default: "getcarrier/perfmeter:latest-v5.5"
+          default: "getcarrier/perfmeter:latest-5.5"
           description: "Docker image name and tag"
           required: true
         dockerfile:
