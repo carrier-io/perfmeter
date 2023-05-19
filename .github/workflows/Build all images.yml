@@ -22,7 +22,7 @@ jobs:
     uses: ./.github/workflows/Docker image multiarch.yml
     with:
       dockerfile: ${{ matrix.dockerfile }}
-      docker_tag: ${{ github.event.inputs.docker_tag }}:${{ matrix.docker_tag }}
+      docker_tag: ${{ inputs.docker_repo_name }}:${{ matrix.docker_tag }}
     secrets: inherit
 
 #        run: |
