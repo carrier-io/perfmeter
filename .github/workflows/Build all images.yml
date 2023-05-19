@@ -1,0 +1,32 @@
+name: Docker Images CI
+
+on:
+  workflow_dispatch:
+#   create:
+#     tags: 
+#       - '*'
+#   push:
+#     branches: [ master ]
+
+jobs:
+  build_all_images_matrix:
+    strategy:
+      matrix:
+        dockerfile: ['Dockerfile_v_5_5', 'Dockerfile_v_5_4_1', 'Dockerfile']
+        docker_tag: ['latest-5.5', 'latest-5.4.1', 'latest-5.3']
+    uses: octocat/octo-repo/.github/workflows/deployment.yml@main
+    with:
+      dockerfile: ${{ matrix.dockerfile }}
+      docker_tag: aspect13/perfmeter:${{ matrix.docker_tag }}
+    secrets: inherit
+
+#        run: |
+#           docker build -t getcarrier/perfmeter:latest-5.5 -f docker/Dockerfile_v_5_5 .
+#           docker build -t getcarrier/perfmeter:latest-5.4.1 -f docker/Dockerfile_v_5_4_1 .
+#           docker build -t getcarrier/perfmeter:latest-5.3 -f docker/Dockerfile .
+#           docker build -t getcarrier/perfmeter:latest-5.2.1 -f docker/Dockerfile_v_5_2_1 .
+#           docker build -t getcarrier/perfmeter:latest-5.2 -f docker/Dockerfile_v_5_2 .
+#           docker build -t getcarrier/perfmeter:latest-5.1.1 -f docker/Dockerfile_v_5_1_1 .
+#           docker build -t getcarrier/perfmeter:latest-5.1 -f docker/Dockerfile_v_5_1 .
+#           docker build -t getcarrier/perfmeter:latest-5.0 -f docker/Dockerfile_v_5_0 .
+#           docker build -t getcarrier/perfmeter:latest-4.0 -f docker/Dockerfile_v_4_0 .
