@@ -1,16 +1,22 @@
 name: Build and push multiarch image
 
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
         docker_tag:
-          default: "getcarrier/perfmeter:latest"
+          default: "getcarrier/perfmeter:latest-v5.5"
           description: "Docker image name and tag"
           required: true
         dockerfile:
           default: "Dockerfile_v_5_5"
           description: "Dockerfile name in 'docker' folder"
           required: true
+#   workflow_call:
+#     inputs:
+#       config-path:
+#         required: true
+#         type: string
 
 
 jobs:
@@ -39,9 +45,9 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: ${{ github.event.inputs.docker_tag }}
+          tags: ${{ inputs.docker_tag }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
           context: .
-          file: ./docker/${{ github.event.inputs.dockerfile }}
+          file: ./docker/${{ inputs.dockerfile }}
           
