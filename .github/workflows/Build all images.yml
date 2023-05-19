@@ -14,7 +14,7 @@ jobs:
       matrix:
         dockerfile: ['Dockerfile_v_5_5', 'Dockerfile_v_5_4_1', 'Dockerfile']
         docker_tag: ['latest-5.5', 'latest-5.4.1', 'latest-5.3']
-    uses: octocat/octo-repo/.github/workflows/deployment.yml@main
+    uses: .github/workflows/Docker image multiarch.yml@master
     with:
       dockerfile: ${{ matrix.dockerfile }}
       docker_tag: aspect13/perfmeter:${{ matrix.docker_tag }}
