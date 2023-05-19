@@ -1,7 +1,6 @@
 name: Build and push multiarch image
 
 on:
-  workflow_call:
   workflow_dispatch:
     inputs:
         docker_tag:
@@ -12,11 +11,14 @@ on:
           default: "Dockerfile_v_5_5"
           description: "Dockerfile name in 'docker' folder"
           required: true
-#   workflow_call:
-#     inputs:
-#       config-path:
-#         required: true
-#         type: string
+  workflow_call:
+    inputs:
+      dockerfile:
+        required: true
+        type: string
+      docker_tag:
+        required: true
+        type: string
 
 
 jobs:
