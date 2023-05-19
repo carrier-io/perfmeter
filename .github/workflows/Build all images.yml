@@ -2,6 +2,11 @@ name: Docker Images CI
 
 on:
   workflow_dispatch:
+    inputs:
+        docker_repo_name:
+          default: "getcarrier/perfmeter"
+          description: "Name of dockerhub repo"
+          required: true
 #   create:
 #     tags: 
 #       - '*'
@@ -17,7 +22,7 @@ jobs:
     uses: .github/workflows/Docker image multiarch.yml@master
     with:
       dockerfile: ${{ matrix.dockerfile }}
-      docker_tag: aspect13/perfmeter:${{ matrix.docker_tag }}
+      docker_tag: ${{ github.event.inputs.docker_tag }}:${{ matrix.docker_tag }}
     secrets: inherit
 
 #        run: |
