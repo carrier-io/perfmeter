@@ -50,6 +50,8 @@ def update_test_status():
 if __name__ == '__main__':
     update_test_status()
     args = get_args()
+    integrations = json.loads(environ.get("integrations", '{}'))
+    s3_config = integrations.get('system', {}).get('s3_integration', {})
     if environ.get("report_id"):
         args["report_id"] = environ.get("report_id")
     logParser = ErrorLogParser(args)
@@ -76,12 +78,13 @@ if __name__ == '__main__':
         headers = {'Authorization': f'bearer {token}'} if token else {}
         upload_url = f'{URL}/api/v1/artifacts/artifacts/{PROJECT_ID}/{BUCKET}'
         requests.post(f'{URL}/api/v1/artifacts/buckets/{PROJECT_ID}', data={"name": BUCKET},
-                      allow_redirects=True, headers={**headers, 'Content-type': 'application/json'})
+                      params=s3_config, allow_redirects=True, 
+                      headers={**headers, 'Content-type': 'application/json'})
         # files = {'file': open(path_to_test_results + ".zip", 'rb')}
         #
         # requests.post(upload_url, allow_redirects=True, files=files, headers=headers)
         files = {'file': open(path_to_reports + ".zip", 'rb')}
-        requests.post(upload_url, allow_redirects=True, files=files, headers=headers)
+        requests.post(upload_url, params=s3_config, allow_redirects=True, files=files, headers=headers)
 
 
     else:
