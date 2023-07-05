@@ -12,7 +12,7 @@ on:
       - '*'
   push:
     branches: 
-      - master
+      - beta-1.0
 
 jobs:
   build_all_images_matrix:
@@ -20,23 +20,23 @@ jobs:
       matrix:
         include:
           - dockerfile: 'Dockerfile_v_5_5'
-            docker_tag: 'latest-5.5'
+            docker_tag: 'beta-1.0-5.5'
           - dockerfile: 'Dockerfile_v_5_4_1'
-            docker_tag: 'latest-5.4.1'
+            docker_tag: 'beta-1.0-5.4.1'
           - dockerfile: 'Dockerfile'
-            docker_tag: 'latest-5.3'
+            docker_tag: 'beta-1.0-5.3'
           - dockerfile: 'Dockerfile_v_5_2_1'
-            docker_tag: 'latest-5.2.1'
+            docker_tag: 'beta-1.0-5.2.1'
           - dockerfile: 'Dockerfile_v_5_2'
-            docker_tag: 'latest-5.2'
+            docker_tag: 'beta-1.0-5.2'
           - dockerfile: 'Dockerfile_v_5_1_1'
-            docker_tag: 'latest-5.1.1'
+            docker_tag: 'beta-1.0-5.1.1'
           - dockerfile: 'Dockerfile_v_5_1'
-            docker_tag: 'latest-5.1'
+            docker_tag: 'beta-1.0-5.1'
           - dockerfile: 'Dockerfile_v_5_0'
-            docker_tag: 'latest-5.0'
+            docker_tag: 'beta-1.0-5.0'
           - dockerfile: 'Dockerfile_v_4_0'
-            docker_tag: 'latest-4.0'
+            docker_tag: 'beta-1.0-4.0'
     uses: ./.github/workflows/Docker image multiarch.yml
     with:
       dockerfile: ${{ matrix.dockerfile }}
