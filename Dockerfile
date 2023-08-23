@@ -16,7 +16,7 @@ RUN apt-get update \
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 ENV PATH $JAVA_HOME/bin:$PATH
 
-ARG JMETER_VERSION=5.0
+ARG JMETER_VERSION=5.5
 
 ENV lg_name perfmeter
 ENV lg_id 1
@@ -36,7 +36,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
     python -m pip install 'common==0.1.2' 'configobj==5.0.6' 'redis==3.2.0' 'argparse==1.4.0'  && \
     rm -rf /tmp/*
 
-RUN pip install git+https://github.com/carrier-io/perfreporter.git
+RUN pip install git+https://github.com/carrier-io/perfreporter.git -b ado_reporter
 
 # Creating carrier user and making him sudoer
 RUN groupadd -g $GID $UNAME

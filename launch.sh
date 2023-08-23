@@ -191,8 +191,8 @@ python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
-cd "jmeter/apache-jmeter-5.0/bin/"
-"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.0//bin/ApacheJMeter.jar" ${args}
+cd "jmeter/apache-jmeter-5.5/bin/"
+"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.5//bin/ApacheJMeter.jar" ${args}
 cd "/"
 
 python ./remove_listeners.py ${args// /%}
