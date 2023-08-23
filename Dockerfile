@@ -1,16 +1,9 @@
-FROM golang:1.13 as build
+FROM ubuntu:18.04
 
-RUN apt-get update && apt-get install -qy libsystemd-dev git
-
-WORKDIR /src
-RUN git clone https://github.com/grafana/loki.git
-WORKDIR /src/loki
-RUN make clean && make BUILD_IN_CONTAINER=false promtail
-
-FROM ubuntu:16.04
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
-    && apt-get -y install openjdk-8-jdk software-properties-common \
+    && apt-get -y install openjdk-8-jdk wget sudo software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
@@ -26,17 +19,17 @@ ARG GID=1001
 
 # Install utilities
 RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
-    apt-get install -y --no-install-recommends bash sudo unzip git wget python3.6 python3.6-dev && \
-    wget https://bootstrap.pypa.io/get-pip.py && python3.6 get-pip.py && \
-    ln -s /usr/bin/python3.6 /usr/local/bin/python3 && \
-    ln -s /usr/bin/python3.6 /usr/local/bin/python && \
+    apt-get install -y --no-install-recommends bash git gfortran python3.7 python3.7-dev python3.7-distutils python3-apt && \
+    wget https://bootstrap.pypa.io/get-pip.py && python3.7 get-pip.py && \
+    ln -s /usr/bin/python3.7 /usr/local/bin/python3 && \
+    ln -s /usr/bin/python3.7 /usr/local/bin/python && \
     python -m pip install --upgrade pip && \
     apt-get clean && \
     python -m pip install setuptools==40.6.2 && \
     python -m pip install 'common==0.1.2' 'configobj==5.0.6' 'redis==3.2.0' 'argparse==1.4.0'  && \
     rm -rf /tmp/*
 
-RUN pip install git+https://github.com/carrier-io/perfreporter.git -b ado_reporter
+RUN pip install git+https://github.com/carrier-io/perfreporter.git@ado_reporter
 
 # Creating carrier user and making him sudoer
 RUN groupadd -g $GID $UNAME
@@ -58,8 +51,6 @@ RUN apt-get update && \
   apt-get install -qy \
   tzdata ca-certificates libsystemd-dev && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-COPY --from=build /src/loki/cmd/promtail/promtail /usr/bin/promtail
-COPY promtail-docker-config.yaml /etc/promtail/docker-config.yaml
 
 # Install JMeter
 RUN mkdir /jmeter
