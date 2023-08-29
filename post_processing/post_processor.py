@@ -3,8 +3,6 @@ import json
 import shutil
 import os
 import requests
-from perfreporter.post_processor import PostProcessor
-from perfreporter.error_parser import ErrorLogParser
 from os import environ
 
 
@@ -54,11 +52,6 @@ if __name__ == '__main__':
     s3_config = integrations.get('system', {}).get('s3_integration', {})
     if environ.get("report_id"):
         args["report_id"] = environ.get("report_id")
-    logParser = ErrorLogParser(args)
-    try:
-        aggregated_errors = logParser.parse_errors()
-    except Exception as e:
-        aggregated_errors = {}
 
     prefix = os.environ.get('DISTRIBUTED_MODE_PREFIX')
     save_reports = True if os.environ.get('save_reports') == "True" else False
@@ -86,7 +79,3 @@ if __name__ == '__main__':
         files = {'file': open(path_to_reports + ".zip", 'rb')}
         requests.post(upload_url, params=s3_config, allow_redirects=True, files=files, headers=headers)
 
-
-    else:
-        post_processor = PostProcessor()
-        post_processor.post_processing(args, aggregated_errors)
