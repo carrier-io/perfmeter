@@ -1,7 +1,7 @@
 import argparse
 import json
 import shutil
-from os import environ
+from os import environ, path, listdir
 import requests
 from perfreporter.post_processor import PostProcessor
 from perfreporter.error_parser import ErrorLogParser
@@ -63,5 +63,16 @@ if __name__ == '__main__':
         requests.post(f'{URL}/artifacts/{BUCKET}/upload', allow_redirects=True, files=files)
     else:
         print("[INFO] Post processing started")
+        # Check if the folder exists
+        if path.exists(RESULTS_FOLDER):
+            # List the contents of the folder
+            folder_contents = listdir(RESULTS_FOLDER)
+        
+            # Print the list of contents
+            print("Contents of the folder:")
+            for item in folder_contents:
+                print(item)
+        else:
+            print("The specified folder does not exist.")
         post_processor = PostProcessor()
         post_processor.post_processing(args, aggregated_errors)
