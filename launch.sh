@@ -178,7 +178,7 @@ if [[ ${args} != *"-Jbuild.id"* ]]; then
 args="${args} -Jbuild.id=${build_id}"
 fi
 
-args="${args} -j /tmp/reports/jmeter_logs.log -l /tmp/reports/result.jtl -e -o /tmp/reports/HtmlReport"
+args="${args} -j /tmp/reports/jmeter_logs.log"
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then
@@ -193,6 +193,7 @@ echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
 cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
 "$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
+"$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar -l /tmp/reports/result.jtl -e -o /tmp/reports/HtmlReport" 
 cd "/"
 
 if [[ "${influx_host}" ]]; then
