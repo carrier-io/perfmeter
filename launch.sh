@@ -193,8 +193,6 @@ cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
 echo "$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
 "$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
 
-python ./remove_listeners.py ${args// /%}
-
 echo "Tests are done"
 
 if [[ -z "${influx_user}" ]]; then
