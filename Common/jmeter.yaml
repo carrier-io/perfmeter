@@ -1,0 +1,42 @@
+#
+# Create at 2020-05-11, create jmeter cluster env: 1 master + 2 slaves
+#
+# Refer: https://github.com/justb4/docker-jmeter.git
+#
+version: "3"
+
+services:
+  jmeter-master:
+    image: justb4/jmeter:latest
+    container_name: jmeter-master
+    #command: ["test", "jmeter-slave1,jmeter-slave2", "/tmp/tests/test_1.jmx"]
+#    command: "tail -f /dev/null"
+    entrypoint: "cat"
+    tty: true
+    environment:
+      - HEAP=-Xms1G -Xmx1G -Xmn256m
+    volumes:
+      - /tmp/test/entrypoint.sh:/entrypoint.sh
+      - /tmp/tests:/tests
+    #restart: on-failure
+
+  jmeter-slave1:
+    image: justb4/jmeter:latest
+    container_name: jmeter-slave1
+    command: ["slave"]
+    # environment:
+    #   - HEAP=-Xms1G -Xmx1G -Xmn256m
+    volumes:
+      - /tmp/test/entrypoint.sh:/entrypoint.sh
+    #restart: on-failure
+
+  jmeter-slave2:
+    image: justb4/jmeter:latest
+    container_name: jmeter-slave2
+    command: ["slave"]
+    # environment:
+    #   - HEAP=-Xms1G -Xmx1G -Xmn256m
+    volumes:
+      - /tmp/test/entrypoint.sh:/entrypoint.sh
+
+    #restart: on-failure
