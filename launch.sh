@@ -153,6 +153,7 @@ sudo sed -i "s/INFLUX_HOST/http:\/\/${influx_host}:${influx_port}/g" /etc/telegr
 sudo sed -i "s/INFLUX_USER/${influx_user}/g" /etc/telegraf/telegraf.conf
 sudo sed -i "s/INFLUX_PASSWORD/${influx_password}/g" /etc/telegraf/telegraf.conf
 sudo service telegraf restart
+python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 fi
 DEFAULT_EXECUTION="/usr/bin/java"
 JOLOKIA_AGENT="-javaagent:/opt/java/jolokia-jvm-1.6.0-agent.jar=config=/opt/jolokia.conf"
@@ -186,8 +187,6 @@ if [[ -z "${JVM_ARGS}" ]]; then
 fi
 echo "Using ${JVM_ARGS} as JVM Args"
 export tests_path=/mnt/jmeter
-
-python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
