@@ -184,16 +184,14 @@ if [[ -z "${JVM_ARGS}" ]]; then
 fi
 echo "Using ${JVM_ARGS} as JVM Args"
 export tests_path=/mnt/jmeter
-python minio_tests_reader.py
-python minio_additional_files_reader.py
 
 python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
-cd "jmeter/apache-jmeter-5.5/bin/"
-"$DEFAULT_EXECUTION" "$JOLOKIA_AGENT" $JVM_ARGS -jar "/jmeter/apache-jmeter-5.5//bin/ApacheJMeter.jar" ${args}
-cd "/"
+cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
+echo "$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
+"$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
 
 python ./remove_listeners.py ${args// /%}
 
