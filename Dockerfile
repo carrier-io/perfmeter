@@ -1,15 +1,7 @@
-FROM ubuntu:18.04
+FROM getcarrier/performance:base-latest
 
 ARG DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update \
-    && apt-get -y install openjdk-8-jdk wget sudo software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
-ENV PATH $JAVA_HOME/bin:$PATH
-
-ARG JMETER_VERSION=5.5
+ENV JMETER_VERSION=5.5
 
 ENV lg_name perfmeter
 ENV lg_id 1
