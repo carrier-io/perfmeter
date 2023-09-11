@@ -4,7 +4,7 @@
 
 ### Docker tags and versioning
 
-getcarrier/perfmeter:1.0 - Carrier PerfMeter release version 1.0    
+getcarrier/perfmeter:1.5 - Carrier PerfMeter release version 1.0    
 
 getcarrier/perfmeter:latest - bleeding edge, not recommended for production
 
