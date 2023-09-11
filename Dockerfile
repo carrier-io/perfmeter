@@ -1,7 +1,6 @@
 FROM getcarrier/performance:base-latest
 
-ARG DEBIAN_FRONTEND=noninteractive
-ENV JMETER_VERSION=5.5
+ENV JMETER_VERSION=5.6.2
 
 ENV lg_name perfmeter
 ENV lg_id 1
