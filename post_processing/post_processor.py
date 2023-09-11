@@ -62,5 +62,6 @@ if __name__ == '__main__':
         files = {'file': open(path_to_test_results + ".zip", 'rb')}
         requests.post(f'{URL}/artifacts/{BUCKET}/upload', allow_redirects=True, files=files)
     else:
+        print("[INFO] Post processing started")
         post_processor = PostProcessor()
         post_processor.post_processing(args, aggregated_errors)
