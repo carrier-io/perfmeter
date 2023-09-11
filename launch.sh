@@ -177,6 +177,8 @@ fi
 if [[ ${args} != *"-Jbuild.id"* ]]; then
 args="${args} -Jbuild.id=${build_id}"
 fi
+
+args="${args} -j /tmp/reports/jmeter_logs.log"
 set -e
 
 if [[ -z "${JVM_ARGS}" ]]; then
@@ -190,8 +192,12 @@ python ./place_listeners.py ${args// /%} ./backend_listener.jmx
 echo "START Running Jmeter on `date`"
 echo "jmeter args=${args}"
 cd "jmeter/apache-jmeter-${JMETER_VERSION}/bin/"
-echo "$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
 "$DEFAULT_EXECUTION" $JVM_ARGS -jar "/jmeter/apache-jmeter-${JMETER_VERSION}/bin/ApacheJMeter.jar" $custom_cmd ${args}
+cd "/"
+
+if [[ "${influx_host}" ]]; then
+python ./remove_listeners.py ${args// /%}
+fi
 
 echo "Tests are done"
 
@@ -212,6 +218,5 @@ export _influx_host="-i ${influx_host}"
 else
 export _influx_host=""
 fi
-mkdir '/tmp/data_for_post_processing'
 python post_processor.py -t $test_type -s $test_name -b ${build_id} -l ${lg_id} ${_influx_host} -p ${influx_port} -idb ${jmeter_db} -en ${env} ${_influx_user} ${_influx_password}
 echo "END Running Jmeter on `date`"
