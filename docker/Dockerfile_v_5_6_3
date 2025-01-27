@@ -1,0 +1,46 @@
+# Start from the existing image that has JMeter 5.5
+FROM getcarrier/perfmeter:latest-5.5
+
+# Set the desired JMeter version to 5.6.3
+ENV JMETER_VERSION=5.6.3
+ENV lg_name perfmeter
+ENV lg_id 1
+ARG UNAME=carrier
+ARG UID=1001
+ARG GID=1001
+
+
+# Remove the old JMeter version
+RUN sudo rm -rf /jmeter/*
+
+# Install the new JMeter version
+#RUN sudo mkdir /jmeter
+RUN chown -R ${UNAME}:${UNAME} /jmeter
+RUN chown -R ${UNAME}:${UNAME} /jmeter/
+USER carrier
+ENV here=1
+RUN cd /jmeter/ \
+    && wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-$JMETER_VERSION.tgz \
+    && tar -xzf apache-jmeter-$JMETER_VERSION.tgz \
+    && rm apache-jmeter-$JMETER_VERSION.tgz
+
+# Update JMeter Home environment variable
+ENV JMETER_HOME /jmeter/apache-jmeter-$JMETER_VERSION/
+
+# Update the PATH environment variable
+ENV PATH $JMETER_HOME/bin:$PATH
+
+# Copy all necessary files to container image
+COPY post_processing/ /
+COPY pre_processing/ /
+COPY launch.sh /
+RUN sudo chmod +x /launch.sh
+COPY Common/AddRemoveListener/ /
+COPY Common/lib_$JMETER_VERSION/ /jmeter/apache-jmeter-$JMETER_VERSION/lib
+COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSION/lib/ext
+COPY Tests /mnt/jmeter
+COPY config.yaml /tmp/
+COPY reports /tmp/reports/
+
+# Application to run on starting the container
+ENTRYPOINT ["/launch.sh"]
