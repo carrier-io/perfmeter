@@ -1,4 +1,4 @@
-FROM getcarrier/perfmeter:beta-3.0-5.6.3
+FROM getcarrier/perfmeter:latest-5.6.3
 
 COPY Common/InfluxBackendListenerClient.jar /jmeter/apache-jmeter-$JMETER_VERSION/lib/ext
 COPY launch.sh /
