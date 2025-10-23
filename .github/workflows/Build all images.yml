@@ -21,7 +21,7 @@ jobs:
         include:
           - dockerfile: 'Dockerfile_v_5_6_3'
             docker_tag: 'latest-5.6.3'
-          - dockerfile: 'Dockerfile_v_5.5'
+          - dockerfile: 'Dockerfile_v_5_5'
             docker_tag: 'latest-5.5'
     uses: ./.github/workflows/Docker image multiarch.yml
     with:
